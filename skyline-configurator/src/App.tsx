@@ -1,122 +1,236 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect, useMemo } from "react";
+import { Save, FilePlus } from "lucide-react";
+import { InputSection } from "./components/InputSection";
+import { DesignerTab } from "./components/DesignerTab";
+import { SaveSidebar } from "./components/SaveSidebar";
+import { calcAll } from "./calculations";
+import { useOverrides } from "./useOverrides";
+import {
+  listProjects,
+  saveProject,
+  deleteProject,
+  duplicateProject,
+  defaultMeta,
+  configFromPanelSize,
+  type ProjectMeta,
+  type ScreenInputState,
+  type SavedProject,
+  type ChainData,
+} from "./store";
+import { CONFIG } from "./config";
 
-function App() {
-  const [count, setCount] = useState(0)
+type Tab = "designer" | "technician" | "render";
+
+const DEFAULT_INPUT: ScreenInputState = { columns: 7, rows: 3, blankPanels: 0 };
+
+export default function App() {
+  const [darkMode, setDarkMode] = useState(
+    () => window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+  const [tab, setTab] = useState<Tab>("designer");
+  const [techMode, setTechMode] = useState(false);
+  const [input, setInput] = useState<ScreenInputState>(DEFAULT_INPUT);
+  const [meta, setMeta] = useState<ProjectMeta>(defaultMeta);
+  const [panelW, setPanelW] = useState<number>(CONFIG.PANEL_WIDTH_MM);
+  const [panelH, setPanelH] = useState<number>(CONFIG.PANEL_HEIGHT_MM);
+  const [projects, setProjects] = useState<SavedProject[]>(() => listProjects());
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [currentId, setCurrentId] = useState<string>(() => crypto.randomUUID());
+  const [blankCells, setBlankCells] = useState<number[]>([]);
+  const [chains, setChains] = useState<ChainData[]>([]);
+
+  const overrideState = useOverrides();
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+  }, [darkMode]);
+
+  const cfg = useMemo(() => configFromPanelSize(panelW, panelH), [panelW, panelH]);
+
+  const calc = useMemo(
+    () => calcAll({ ...input, blankPanels: input.blankPanels + blankCells.length }, cfg),
+    [input, blankCells, cfg]
+  );
+
+  function handleSave() {
+    const project: SavedProject = {
+      id: currentId,
+      savedAt: new Date().toISOString(),
+      meta,
+      input,
+      overrides: overrideState.overrides,
+      panelWidthMm: panelW,
+      panelHeightMm: panelH,
+      blankCells,
+      chains,
+    };
+    saveProject(project);
+    setProjects(listProjects());
+  }
+
+  function handleLoad(p: SavedProject) {
+    setCurrentId(p.id);
+    setMeta(p.meta);
+    setInput(p.input);
+    setPanelW(p.panelWidthMm);
+    setPanelH(p.panelHeightMm);
+    setBlankCells(p.blankCells ?? []);
+    setChains(p.chains ?? []);
+    overrideState.resetAll();
+    setTimeout(() => {
+      Object.entries(p.overrides).forEach(([k, v]) => overrideState.set(k, v));
+    }, 0);
+    setShowSidebar(false);
+  }
+
+  function handleDelete(id: string) {
+    deleteProject(id);
+    setProjects(listProjects());
+  }
+
+  function handleDuplicate(id: string) {
+    const dup = duplicateProject(id);
+    if (dup) {
+      saveProject(dup);
+      setProjects(listProjects());
+    }
+  }
+
+  function handleNew() {
+    if (!confirm("Start a new project? Unsaved changes will be lost.")) return;
+    setCurrentId(crypto.randomUUID());
+    setMeta(defaultMeta());
+    setInput(DEFAULT_INPUT);
+    setPanelW(CONFIG.PANEL_WIDTH_MM);
+    setPanelH(CONFIG.PANEL_HEIGHT_MM);
+    setBlankCells([]);
+    setChains([]);
+    overrideState.resetAll();
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors">
+      {/* Top bar */}
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 no-print">
+        <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-3 flex-wrap">
+          <span className="font-bold text-lg tracking-tight text-gray-900 dark:text-gray-100">
+            SKYLINE{" "}
+            <span className="text-blue-600 font-normal text-sm">LED Wall Configurator</span>
+          </span>
+          <div className="flex-1" />
 
-      <div className="ticks"></div>
+          {/* Tabs */}
+          <nav className="flex gap-1">
+            {(["designer", ...(techMode ? ["technician" as Tab] : []), "render"] as Tab[]).map(
+              (t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`text-xs px-3 py-1.5 rounded font-medium transition-colors ${
+                    tab === t
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  {t === "designer" ? "Designer / PM" : t === "technician" ? "Technician" : "Layout"}
+                </button>
+              )
+            )}
+          </nav>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+          {/* Technician mode toggle */}
+          <label className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+            <span className="relative inline-block w-8 h-4">
+              <input
+                type="checkbox"
+                checked={techMode}
+                onChange={(e) => {
+                  setTechMode(e.target.checked);
+                  if (e.target.checked) setTab("technician");
+                  else if (tab === "technician") setTab("designer");
+                }}
+                className="sr-only peer"
+              />
+              <span className="absolute inset-0 rounded-full bg-gray-200 dark:bg-gray-700 peer-checked:bg-blue-600 transition-colors" />
+              <span className="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform peer-checked:translate-x-4" />
+            </span>
+            Technician mode
+          </label>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+          {/* Actions */}
+          <button
+            onClick={handleNew}
+            className="flex items-center gap-1 text-xs px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            <FilePlus size={13} /> New
+          </button>
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 font-medium"
+          >
+            <Save size={13} /> Save
+          </button>
+          <button
+            onClick={() => setShowSidebar((s) => !s)}
+            className="text-xs px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            Projects{projects.length > 0 ? ` (${projects.length})` : ""}
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-6xl mx-auto px-4 py-4 flex gap-4">
+        {/* Main content */}
+        <main className="flex-1 min-w-0 space-y-4">
+          <InputSection
+            input={input}
+            meta={meta}
+            panelWidthMm={panelW}
+            panelHeightMm={panelH}
+            onInputChange={setInput}
+            onMetaChange={setMeta}
+            onPanelSizeChange={(w, h) => {
+              setPanelW(w);
+              setPanelH(h);
+            }}
+            darkMode={darkMode}
+            onDarkToggle={() => setDarkMode((d) => !d)}
+          />
+
+          {tab === "designer" && (
+            <DesignerTab calc={calc} overrideState={overrideState} />
+          )}
+
+          {tab === "technician" && techMode && (
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 text-center text-gray-400 text-sm">
+              Technician tab — coming next
+            </div>
+          )}
+
+          {tab === "render" && (
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 text-center text-gray-400 text-sm">
+              Visual layout &amp; daisy chain — coming next
+            </div>
+          )}
+        </main>
+
+        {/* Saved projects sidebar */}
+        {showSidebar && (
+          <aside className="w-56 shrink-0">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 sticky top-16">
+              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                Saved Projects
+              </h3>
+              <SaveSidebar
+                projects={projects}
+                onLoad={handleLoad}
+                onDelete={handleDelete}
+                onDuplicate={handleDuplicate}
+              />
+            </div>
+          </aside>
+        )}
+      </div>
+    </div>
+  );
 }
-
-export default App

@@ -103,7 +103,7 @@ export function calcMaterials(activePanels: number, cfg: Config = CONFIG): Mater
     fitKit: cases * cfg.FITKIT_PER_CASE,
     neutrikCouplers: cfg.NEUTRIK_COUPLER_FIXED,
     procFlightcase: 1,
-    ledSpares: cfg.LED_SPARES_FIXED,
+    ledSpares: Math.ceil(activePanels * cfg.LED_SPARES_PCT),
     processor: calcProcessor(activePanels, cfg).count,
     powerHdmiUsbUtp: 1,
     mediaplayer: 1,
@@ -127,15 +127,7 @@ export function calcPower(activePanels: number, cfg: Config = CONFIG): PowerSpec
   };
 }
 
-export function calcProcessor(activePanels: number, cfg: Config = CONFIG): ProcessorSpec {
-  const screenPixelsW = Math.ceil(Math.sqrt(activePanels)) * cfg.PANEL_PIXELS_W;
-  const maxHdPixels = cfg.PROCESSOR_MAX_PIXELS_W * cfg.PROCESSOR_MAX_PIXELS_H;
-
-  // More precise: check if actual configured pixels exceed HD
-  // This is checked against the real pixel dimensions in the full calc
-  const hdPixels = cfg.PROCESSOR_MAX_PIXELS_W * cfg.PROCESSOR_MAX_PIXELS_H;
-  const _ = screenPixelsW; // used below via full calc
-
+export function calcProcessor(_activePanels: number, _cfg: Config = CONFIG): ProcessorSpec {
   return { count: 1, needsUpgrade: false, warning: null };
 }
 

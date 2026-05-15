@@ -9,8 +9,6 @@ import {
   metresToInput,
   pixelsToInput,
 } from "./calculations";
-import { CONFIG } from "./config";
-
 // Reference case from sheet: 7 columns × 3 rows, 0 blank = 21 active panels
 const REF_INPUT = { columns: 7, rows: 3, blankPanels: 0 };
 
@@ -99,8 +97,8 @@ describe("calcMaterials — 21 panels (reference sheet values)", () => {
     expect(m.procFlightcase).toBe(1);
   });
 
-  it("LED spares = 2 (fixed per sheet)", () => {
-    expect(m.ledSpares).toBe(2);
+  it("LED spares = ceil(21 × 0.1) = 3", () => {
+    expect(m.ledSpares).toBe(3); // ceil(2.1)
   });
 
   it("Processor = 1 (HD sufficient for 1344×576)", () => {

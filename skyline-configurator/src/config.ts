@@ -25,7 +25,7 @@ export const CONFIG = {
   ETAPE_PER_CASE: 1,
   FITKIT_PER_CASE: 10,
   NEUTRIK_COUPLER_FIXED: 4,
-  LED_SPARES_FIXED: 2,
-} as const;
+  LED_SPARES_PCT: 0.1,
+};
 
 export type Config = typeof CONFIG;
