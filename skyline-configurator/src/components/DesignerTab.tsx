@@ -120,7 +120,7 @@ export function DesignerTab({ calc, overrideState }: Props) {
         <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
           <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Power Requirements</h3>
         </div>
-        <div className="p-4 grid grid-cols-3 gap-4">
+        <div className="p-4 grid grid-cols-4 gap-4">
           <Stat label="Total draw">
             <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
               {Math.round(resolve("pow_totalWatts", power.totalWatts, overrides) as number)} W
@@ -135,6 +135,14 @@ export function DesignerTab({ calc, overrideState }: Props) {
             <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
               {resolve("pow_shukoCircuits", power.circuits, overrides)}×
             </span>
+          </Stat>
+          <Stat label="Total weight">
+            <EditableField
+              fieldKey="totalWeight"
+              auto={dimensions.activePanels * 10}
+              overrideState={overrideState}
+              format={fmtKg}
+            />
           </Stat>
         </div>
       </section>
