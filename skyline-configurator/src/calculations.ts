@@ -40,9 +40,8 @@ export interface MaterialList {
 export interface PowerSpec {
   totalWatts: number;
   amps: number;
-  shukoCiruits: number;
+  circuits: number;
   utpDataCables: number;
-  utpBackupCables: number;
   dataLines: number;
 }
 
@@ -114,15 +113,14 @@ export function calcMaterials(activePanels: number, cfg: Config = CONFIG): Mater
 export function calcPower(activePanels: number, cfg: Config = CONFIG): PowerSpec {
   const totalWatts = activePanels * cfg.PANEL_POWER_W;
   const amps = totalWatts / cfg.VOLTAGE;
-  const shukoCiruits = Math.ceil(totalWatts / cfg.SHUKO_MAX_W);
+  const circuits = Math.ceil(totalWatts / cfg.CIRCUIT_MAX_W);
   const dataLines = Math.ceil(activePanels / cfg.PANELS_PER_DATA_LINE);
 
   return {
     totalWatts,
     amps,
-    shukoCiruits,
+    circuits,
     utpDataCables: 2,
-    utpBackupCables: 2,
     dataLines,
   };
 }

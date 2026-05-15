@@ -180,9 +180,9 @@ export function TechPrintButton({ meta, calc, overrides, blankCells, chains }: P
             <div style={{ display: "flex", gap: "16px" }}>
               <div><strong>{Math.round(Number(r("pow_totalWatts", power.totalWatts)))} W</strong> total</div>
               <div><strong>{Number(r("pow_amps", power.amps)).toFixed(2)} A</strong> at 240V</div>
-              <div><strong>{r("pow_shukoCircuits", power.shukoCiruits)}×</strong> Shuko 16A</div>
+              <div><strong>{r("pow_shukoCircuits", power.circuits)}×</strong> Shuko 16A</div>
               <div><strong>{r("pow_dataLines", power.dataLines)}</strong> data lines</div>
-              <div><strong>{r("pow_utpData", power.utpDataCables)}+{r("pow_utpBackup", power.utpBackupCables)}</strong> UTP</div>
+              <div><strong>{r("pow_utpData", power.utpDataCables)}+{r("pow_utpBackup", 0)}</strong> UTP</div>
             </div>
             {processor.needsUpgrade && (
               <div style={{ marginTop: "2px", color: "#c00", fontSize: "7pt", fontWeight: "bold" }}>

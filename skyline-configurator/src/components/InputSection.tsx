@@ -32,15 +32,15 @@ export function InputSection({
   const [mode, setMode] = useState<InputMode>("panels");
   const [showSettings, setShowSettings] = useState(false);
 
-  // Metres mode state
-  const [mW, setMW] = useState(String((input.columns * panelWidthMm) / 1000));
-  const [mH, setMH] = useState(String((input.rows * panelHeightMm) / 1000));
+  // Metres mode — initialise from current panel count × physical size
+  const [mW, setMW] = useState(((input.columns * panelWidthMm) / 1000).toFixed(3));
+  const [mH, setMH] = useState(((input.rows * panelHeightMm) / 1000).toFixed(3));
 
-  // Pixels mode state
+  // Pixels mode
   const [pxW, setPxW] = useState(String(input.columns * CONFIG.PANEL_PIXELS_W));
   const [pxH, setPxH] = useState(String(input.rows * CONFIG.PANEL_PIXELS_H));
 
-  // Settings state
+  // Settings panel
   const [settingsW, setSettingsW] = useState(String(panelWidthMm));
   const [settingsH, setSettingsH] = useState(String(panelHeightMm));
 
@@ -68,8 +68,17 @@ export function InputSection({
     setShowSettings(false);
   }
 
+  // Metres snap delta: compare typed value against applied panel-snapped value
   const snapDeltaW = input.columns * panelWidthMm - parseFloat(mW) * 1000;
   const snapDeltaH = input.rows * panelHeightMm - parseFloat(mH) * 1000;
+
+  // Pixel snap delta: compute from typed value directly, NOT from applied input.columns
+  // This prevents false warnings when input hasn't been applied yet
+  const parsedPx = pixelsToInput(parseInt(pxW) || 0, parseInt(pxH) || 0);
+  const pxDeltaW = parsedPx.deltaW;
+  const pxDeltaH = parsedPx.deltaH;
+  const pxSnappedW = parsedPx.input.columns * CONFIG.PANEL_PIXELS_W;
+  const pxSnappedH = parsedPx.input.rows * CONFIG.PANEL_PIXELS_H;
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4">
@@ -121,12 +130,6 @@ export function InputSection({
             >
               Apply
             </button>
-            <button
-              onClick={() => { setSettingsW(String(CONFIG.PANEL_WIDTH_MM)); setSettingsH(String(CONFIG.PANEL_HEIGHT_MM)); }}
-              className="text-xs text-gray-500 underline"
-            >
-              Reset to {CONFIG.PANEL_WIDTH_MM}×{CONFIG.PANEL_HEIGHT_MM}
-            </button>
           </div>
         </div>
       )}
@@ -173,15 +176,13 @@ export function InputSection({
         ))}
       </div>
 
-      {/* Panel input */}
+      {/* By panels */}
       {mode === "panels" && (
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 dark:text-gray-400">Columns</label>
             <input
-              type="number"
-              min={1}
-              value={input.columns}
+              type="number" min={1} value={input.columns}
               onChange={(e) => onInputChange({ ...input, columns: Math.max(1, parseInt(e.target.value) || 1) })}
               className="w-16 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 text-center bg-white dark:bg-gray-800 dark:text-gray-100"
             />
@@ -190,9 +191,7 @@ export function InputSection({
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 dark:text-gray-400">Rows</label>
             <input
-              type="number"
-              min={1}
-              value={input.rows}
+              type="number" min={1} value={input.rows}
               onChange={(e) => onInputChange({ ...input, rows: Math.max(1, parseInt(e.target.value) || 1) })}
               className="w-16 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 text-center bg-white dark:bg-gray-800 dark:text-gray-100"
             />
@@ -200,10 +199,7 @@ export function InputSection({
           <div className="flex items-center gap-2 ml-4">
             <label className="text-sm text-gray-600 dark:text-gray-400">Blank panels</label>
             <input
-              type="number"
-              min={0}
-              max={input.columns * input.rows}
-              value={input.blankPanels}
+              type="number" min={0} max={input.columns * input.rows} value={input.blankPanels}
               onChange={(e) => onInputChange({ ...input, blankPanels: Math.max(0, parseInt(e.target.value) || 0) })}
               className="w-16 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 text-center bg-white dark:bg-gray-800 dark:text-gray-100"
             />
@@ -211,60 +207,51 @@ export function InputSection({
         </div>
       )}
 
+      {/* By metres */}
       {mode === "metres" && (
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 dark:text-gray-400">Width m</label>
             <input
-              type="number"
-              step="0.1"
-              min={0.1}
-              value={mW}
+              type="number" step="0.001" min={0.001} value={mW}
               onChange={(e) => setMW(e.target.value)}
               onBlur={applyMetres}
               onKeyDown={(e) => e.key === "Enter" && applyMetres()}
-              className="w-20 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 dark:text-gray-100"
+              className="w-24 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
           <span className="text-gray-400 text-lg">×</span>
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 dark:text-gray-400">Height m</label>
             <input
-              type="number"
-              step="0.1"
-              min={0.1}
-              value={mH}
+              type="number" step="0.001" min={0.001} value={mH}
               onChange={(e) => setMH(e.target.value)}
               onBlur={applyMetres}
               onKeyDown={(e) => e.key === "Enter" && applyMetres()}
-              className="w-20 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 dark:text-gray-100"
+              className="w-24 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
-          <button
-            onClick={applyMetres}
-            className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
+          <button onClick={applyMetres} className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">
             Apply
           </button>
-          {(Math.abs(snapDeltaW) > 1 || Math.abs(snapDeltaH) > 1) && (
+          {(Math.abs(snapDeltaW) > 0.5 || Math.abs(snapDeltaH) > 0.5) && (
             <span className="text-xs text-amber-600 dark:text-amber-400">
-              Snapped to {(input.columns * panelWidthMm / 1000).toFixed(2)}m ×{" "}
-              {(input.rows * panelHeightMm / 1000).toFixed(2)}m
-              {snapDeltaW !== 0 && ` (ΔW ${snapDeltaW > 0 ? "+" : ""}${snapDeltaW.toFixed(0)}mm)`}
-              {snapDeltaH !== 0 && ` (ΔH ${snapDeltaH > 0 ? "+" : ""}${snapDeltaH.toFixed(0)}mm)`}
+              Snapped to {(input.columns * panelWidthMm / 1000).toFixed(3)}m ×{" "}
+              {(input.rows * panelHeightMm / 1000).toFixed(3)}m
+              {Math.abs(snapDeltaW) > 0.5 && ` (ΔW ${snapDeltaW > 0 ? "+" : ""}${snapDeltaW.toFixed(0)}mm)`}
+              {Math.abs(snapDeltaH) > 0.5 && ` (ΔH ${snapDeltaH > 0 ? "+" : ""}${snapDeltaH.toFixed(0)}mm)`}
             </span>
           )}
         </div>
       )}
 
+      {/* By pixels */}
       {mode === "pixels" && (
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 dark:text-gray-400">Width px</label>
             <input
-              type="number"
-              min={1}
-              value={pxW}
+              type="number" min={1} value={pxW}
               onChange={(e) => setPxW(e.target.value)}
               onBlur={applyPixels}
               onKeyDown={(e) => e.key === "Enter" && applyPixels()}
@@ -275,34 +262,24 @@ export function InputSection({
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 dark:text-gray-400">Height px</label>
             <input
-              type="number"
-              min={1}
-              value={pxH}
+              type="number" min={1} value={pxH}
               onChange={(e) => setPxH(e.target.value)}
               onBlur={applyPixels}
               onKeyDown={(e) => e.key === "Enter" && applyPixels()}
               className="w-24 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 bg-white dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
-          <button
-            onClick={applyPixels}
-            className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
+          <button onClick={applyPixels} className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">
             Apply
           </button>
-          {(() => {
-            const snappedW = input.columns * CONFIG.PANEL_PIXELS_W;
-            const snappedH = input.rows * CONFIG.PANEL_PIXELS_H;
-            const dW = snappedW - parseInt(pxW);
-            const dH = snappedH - parseInt(pxH);
-            return (Math.abs(dW) > 0 || Math.abs(dH) > 0) ? (
-              <span className="text-xs text-amber-600 dark:text-amber-400">
-                Snapped to {snappedW}×{snappedH} px
-                {dW !== 0 && ` (ΔW ${dW > 0 ? "+" : ""}${dW}px)`}
-                {dH !== 0 && ` (ΔH ${dH > 0 ? "+" : ""}${dH}px)`}
-              </span>
-            ) : null;
-          })()}
+          {/* Only show snap warning if the typed value is NOT already on a panel boundary */}
+          {(Math.abs(pxDeltaW) > 0 || Math.abs(pxDeltaH) > 0) && (
+            <span className="text-xs text-amber-600 dark:text-amber-400">
+              Snapped to {pxSnappedW}×{pxSnappedH} px
+              {pxDeltaW !== 0 && ` (ΔW ${pxDeltaW > 0 ? "+" : ""}${pxDeltaW}px)`}
+              {pxDeltaH !== 0 && ` (ΔH ${pxDeltaH > 0 ? "+" : ""}${pxDeltaH}px)`}
+            </span>
+          )}
         </div>
       )}
     </div>

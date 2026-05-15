@@ -239,10 +239,10 @@ function ClientPdfDocument({
             <Text style={s.sectionTitle}>Power Requirements</Text>
             <View style={s.row}><Text style={s.label}>Total power draw</Text><Text style={s.value}>{Math.round(Number(r("pow_totalWatts", power.totalWatts)))} W</Text></View>
             <View style={s.row}><Text style={s.label}>Current at 240V</Text><Text style={s.value}>{Number(r("pow_amps", power.amps)).toFixed(3)} A</Text></View>
-            <View style={s.row}><Text style={s.label}>Shuko 16A circuits required</Text><Text style={s.value}>{r("pow_shukoCircuits", power.shukoCiruits)}</Text></View>
+            <View style={s.row}><Text style={s.label}>Shuko 16A circuits required</Text><Text style={s.value}>{r("pow_shukoCircuits", power.circuits)}</Text></View>
             <View style={s.row}><Text style={s.label}>Data lines</Text><Text style={s.value}>{r("pow_dataLines", power.dataLines)}</Text></View>
             <View style={s.row}><Text style={s.label}>UTP data cables</Text><Text style={s.value}>{r("pow_utpData", power.utpDataCables)}</Text></View>
-            <View style={s.row}><Text style={s.label}>UTP backup cables</Text><Text style={s.value}>{r("pow_utpBackup", power.utpBackupCables)}</Text></View>
+            <View style={s.row}><Text style={s.label}>UTP backup cables</Text><Text style={s.value}>{r("pow_utpBackup", 0)}</Text></View>
           </>
         )}
 
