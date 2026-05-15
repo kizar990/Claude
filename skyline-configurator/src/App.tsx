@@ -9,6 +9,9 @@ import { lazy, Suspense } from "react";
 const ClientPdfModal = lazy(() =>
   import("./components/ClientPdfExport").then((m) => ({ default: m.ClientPdfModal }))
 );
+const TechPdfDownloadButton = lazy(() =>
+  import("./components/TechPdfExport").then((m) => ({ default: m.TechPdfDownloadButton }))
+);
 import { TechPrintButton } from "./components/TechPrintout";
 import { calcAll } from "./calculations";
 import { useOverrides } from "./useOverrides";
@@ -177,6 +180,15 @@ export default function App() {
             blankCells={blankCells}
             chains={chains}
           />
+          <Suspense fallback={null}>
+            <TechPdfDownloadButton
+              meta={meta}
+              calc={calc}
+              overrides={overrideState.overrides}
+              blankCells={blankCells}
+              chains={chains}
+            />
+          </Suspense>
           <button
             onClick={() => setShowPdfModal(true)}
             className="flex items-center gap-1 text-xs px-2 py-1.5 rounded border border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
