@@ -38,7 +38,7 @@ export interface ProcessorModel {
 }
 
 export const PROCESSORS: ProcessorModel[] = [
-  { id: "mctrl660", name: "MCTRL660", maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
+  { id: "mctrl660", name: "MCTRL660", maxPixelsW: 99999, maxPixelsH: 99999, maxTotalPixels: 2_600_000 }, // 4 ports × 650,000 px
   { id: "vx600",    name: "VX600",    maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
   { id: "vx1000",   name: "VX1000",   maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
   { id: "vx2000",   name: "VX2000",   maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
