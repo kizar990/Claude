@@ -5,6 +5,11 @@ import { DesignerTab } from "./components/DesignerTab";
 import { TechnicianTab } from "./components/TechnicianTab";
 import { LayoutTab } from "./components/LayoutTab";
 import { SaveSidebar } from "./components/SaveSidebar";
+import { lazy, Suspense } from "react";
+const ClientPdfModal = lazy(() =>
+  import("./components/ClientPdfExport").then((m) => ({ default: m.ClientPdfModal }))
+);
+import { TechPrintButton } from "./components/TechPrintout";
 import { calcAll } from "./calculations";
 import { useOverrides } from "./useOverrides";
 import {
@@ -40,6 +45,7 @@ export default function App() {
   const [currentId, setCurrentId] = useState<string>(() => crypto.randomUUID());
   const [blankCells, setBlankCells] = useState<number[]>([]);
   const [chains, setChains] = useState<ChainData[]>([]);
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   const overrideState = useOverrides();
 
@@ -160,6 +166,19 @@ export default function App() {
           </label>
 
           {/* Actions */}
+          <TechPrintButton
+            meta={meta}
+            calc={calc}
+            overrides={overrideState.overrides}
+            blankCells={blankCells}
+            chains={chains}
+          />
+          <button
+            onClick={() => setShowPdfModal(true)}
+            className="flex items-center gap-1 text-xs px-2 py-1.5 rounded border border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+          >
+            PDF
+          </button>
           <button
             onClick={handleNew}
             className="flex items-center gap-1 text-xs px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -236,6 +255,20 @@ export default function App() {
           </aside>
         )}
       </div>
+
+      {showPdfModal && (
+        <Suspense fallback={null}>
+        <ClientPdfModal
+          meta={meta}
+          calc={calc}
+          overrides={overrideState.overrides}
+          blankCells={blankCells}
+          chains={chains}
+          companyName={CONFIG.COMPANY_NAME}
+          onClose={() => setShowPdfModal(false)}
+        />
+        </Suspense>
+      )}
     </div>
   );
 }
