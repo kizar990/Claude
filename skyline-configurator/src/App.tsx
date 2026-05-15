@@ -3,6 +3,7 @@ import { Save, FilePlus } from "lucide-react";
 import { InputSection } from "./components/InputSection";
 import { DesignerTab } from "./components/DesignerTab";
 import { TechnicianTab } from "./components/TechnicianTab";
+import { LayoutTab } from "./components/LayoutTab";
 import { SaveSidebar } from "./components/SaveSidebar";
 import { calcAll } from "./calculations";
 import { useOverrides } from "./useOverrides";
@@ -207,9 +208,14 @@ export default function App() {
           )}
 
           {tab === "render" && (
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 text-center text-gray-400 text-sm">
-              Visual layout &amp; daisy chain — coming next
-            </div>
+            <LayoutTab
+              columns={input.columns}
+              rows={input.rows}
+              blankCells={blankCells}
+              chains={chains}
+              onBlankCellsChange={setBlankCells}
+              onChainsChange={setChains}
+            />
           )}
         </main>
 
