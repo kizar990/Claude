@@ -27,3 +27,20 @@ export const CONFIG = {
 };
 
 export type Config = typeof CONFIG;
+
+export interface ProcessorModel {
+  id: string;
+  name: string;
+  // TODO: confirm from Novastar spec sheet
+  maxPixelsW: number;
+  maxPixelsH: number;
+  maxTotalPixels: number;
+}
+
+export const PROCESSORS: ProcessorModel[] = [
+  { id: "mctrl660", name: "MCTRL660", maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
+  { id: "vx600",    name: "VX600",    maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
+  { id: "vx1000",   name: "VX1000",   maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
+  { id: "vx2000",   name: "VX2000",   maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
+  { id: "mx40",     name: "MX40",     maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
+];

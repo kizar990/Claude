@@ -26,6 +26,7 @@ export interface SavedProject {
   panelHeightMm: number;
   blankCells: number[];
   chains: ChainData[];
+  processorId?: string;
 }
 
 export interface ChainData {

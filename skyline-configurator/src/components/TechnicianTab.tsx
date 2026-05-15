@@ -4,6 +4,7 @@ import { EditableField } from "./EditableField";
 import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
+import { PROCESSORS } from "../config";
 
 interface CustomLine {
   id: string;
@@ -14,9 +15,11 @@ interface CustomLine {
 interface Props {
   calc: FullConfig;
   overrideState: OverrideState;
+  processorId: string;
+  onProcessorChange: (id: string) => void;
 }
 
-export function TechnicianTab({ calc, overrideState }: Props) {
+export function TechnicianTab({ calc, overrideState, processorId, onProcessorChange }: Props) {
   const { dimensions, materials, power, processor } = calc;
   const { overrides, resetAll } = overrideState;
   const anyOverride = Object.keys(overrides).length > 0;
@@ -89,11 +92,34 @@ export function TechnicianTab({ calc, overrideState }: Props) {
             <EditableField fieldKey="totalWeight" auto={dimensions.activePanels * 10} overrideState={overrideState} format={(v) => `${Math.round(Number(v))} kg`} />
           </TechStat>
         </div>
-        {processor.needsUpgrade && (
-          <div className="mx-4 mb-3 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded text-xs text-red-700 dark:text-red-300">
-            ⚠ {processor.warning}
+        {/* Processor selector */}
+        <div className="mx-4 mb-3 flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Processor</span>
+            <select
+              value={processorId}
+              onChange={(e) => onProcessorChange(e.target.value)}
+              className="text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 dark:text-gray-100"
+            >
+              {PROCESSORS.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
           </div>
-        )}
+          {!processor.specsConfirmed ? (
+            <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded px-2 py-1">
+              {processor.warning}
+            </span>
+          ) : processor.needsUpgrade ? (
+            <span className="text-xs text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded px-2 py-1">
+              {processor.warning}
+            </span>
+          ) : (
+            <span className="text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded px-2 py-1">
+              ✓ {processor.modelName} — sufficient for {dimensions.pixelsW}×{dimensions.pixelsH} px
+            </span>
+          )}
+        </div>
       </section>
 
       {/* Material list */}

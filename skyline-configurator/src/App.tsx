@@ -24,7 +24,7 @@ import {
   type SavedProject,
   type ChainData,
 } from "./store";
-import { CONFIG } from "./config";
+import { CONFIG, PROCESSORS } from "./config";
 
 type Tab = "designer" | "technician" | "render";
 
@@ -46,6 +46,7 @@ export default function App() {
   const [blankCells, setBlankCells] = useState<number[]>([]);
   const [chains, setChains] = useState<ChainData[]>([]);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [processorId, setProcessorId] = useState<string>(PROCESSORS[0].id);
 
   const overrideState = useOverrides();
 
@@ -56,8 +57,8 @@ export default function App() {
   const cfg = useMemo(() => configFromPanelSize(panelW, panelH), [panelW, panelH]);
 
   const calc = useMemo(
-    () => calcAll({ ...input, blankPanels: input.blankPanels + blankCells.length }, cfg),
-    [input, blankCells, cfg]
+    () => calcAll({ ...input, blankPanels: input.blankPanels + blankCells.length }, cfg, processorId),
+    [input, blankCells, cfg, processorId]
   );
 
   function handleSave() {
@@ -71,6 +72,7 @@ export default function App() {
       panelHeightMm: panelH,
       blankCells,
       chains,
+      processorId,
     };
     saveProject(project);
     setProjects(listProjects());
@@ -84,6 +86,7 @@ export default function App() {
     setPanelH(p.panelHeightMm);
     setBlankCells(p.blankCells ?? []);
     setChains(p.chains ?? []);
+    setProcessorId(p.processorId ?? PROCESSORS[0].id);
     overrideState.resetAll();
     setTimeout(() => {
       Object.entries(p.overrides).forEach(([k, v]) => overrideState.set(k, v));
@@ -113,6 +116,7 @@ export default function App() {
     setPanelH(CONFIG.PANEL_HEIGHT_MM);
     setBlankCells([]);
     setChains([]);
+    setProcessorId(PROCESSORS[0].id);
     overrideState.resetAll();
   }
 
@@ -223,7 +227,12 @@ export default function App() {
           )}
 
           {tab === "technician" && techMode && (
-            <TechnicianTab calc={calc} overrideState={overrideState} />
+            <TechnicianTab
+              calc={calc}
+              overrideState={overrideState}
+              processorId={processorId}
+              onProcessorChange={setProcessorId}
+            />
           )}
 
           {tab === "render" && (

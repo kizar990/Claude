@@ -1,4 +1,4 @@
-import { CONFIG, type Config } from "./config";
+import { CONFIG, PROCESSORS, type Config } from "./config";
 
 export interface ScreenInput {
   columns: number;
@@ -46,8 +46,10 @@ export interface PowerSpec {
 }
 
 export interface ProcessorSpec {
+  modelName: string;
   count: number;
   needsUpgrade: boolean;
+  specsConfirmed: boolean;
   warning: string | null;
 }
 
@@ -126,7 +128,7 @@ export function calcPower(activePanels: number, cfg: Config = CONFIG): PowerSpec
 }
 
 export function calcProcessor(_activePanels: number, _cfg: Config = CONFIG): ProcessorSpec {
-  return { count: 1, needsUpgrade: false, warning: null };
+  return { modelName: "", count: 1, needsUpgrade: false, specsConfirmed: true, warning: null };
 }
 
 export function calcProcessorFromDimensions(
@@ -138,7 +140,7 @@ export function calcProcessorFromDimensions(
   const maxH = cfg.PROCESSOR_MAX_PIXELS_H;
 
   if (pixelsW <= maxW && pixelsH <= maxH) {
-    return { count: 1, needsUpgrade: false, warning: null };
+    return { modelName: "HD", count: 1, needsUpgrade: false, specsConfirmed: true, warning: null };
   }
 
   const neededW = Math.ceil(pixelsW / maxW);
@@ -146,17 +148,60 @@ export function calcProcessorFromDimensions(
   const count = Math.max(neededW, neededH);
 
   return {
+    modelName: "HD",
     count,
     needsUpgrade: true,
+    specsConfirmed: true,
     warning: `⚠ Exceeds HD processor (${pixelsW}×${pixelsH} px) — ${count} processor${count > 1 ? "s" : ""} needed or upgrade to 4K processor`,
   };
 }
 
-export function calcAll(input: ScreenInput, cfg: Config = CONFIG): FullConfig {
+export function calcProcessorSufficiency(
+  pixelsW: number,
+  pixelsH: number,
+  processorId: string
+): ProcessorSpec {
+  const model = PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0];
+  const { name, maxPixelsW, maxPixelsH, maxTotalPixels } = model;
+  const totalPixels = pixelsW * pixelsH;
+
+  if (maxPixelsW === 0 || maxPixelsH === 0 || maxTotalPixels === 0) {
+    return {
+      modelName: name,
+      count: 1,
+      needsUpgrade: false,
+      specsConfirmed: false,
+      warning: `⚠ ${name} pixel caps not confirmed — verify with Novastar data sheet`,
+    };
+  }
+
+  if (pixelsW <= maxPixelsW && pixelsH <= maxPixelsH && totalPixels <= maxTotalPixels) {
+    return { modelName: name, count: 1, needsUpgrade: false, specsConfirmed: true, warning: null };
+  }
+
+  const neededW = Math.ceil(pixelsW / maxPixelsW);
+  const neededH = Math.ceil(pixelsH / maxPixelsH);
+  const count = Math.max(neededW, neededH);
+  return {
+    modelName: name,
+    count,
+    needsUpgrade: true,
+    specsConfirmed: true,
+    warning: `⚠ Exceeds ${name} capacity (${pixelsW}×${pixelsH} px) — ${count} unit${count > 1 ? "s" : ""} needed`,
+  };
+}
+
+export function calcAll(
+  input: ScreenInput,
+  cfg: Config = CONFIG,
+  processorId?: string
+): FullConfig {
   const dimensions = calcDimensions(input, cfg);
   const materials = calcMaterials(dimensions.activePanels, cfg);
   const power = calcPower(dimensions.activePanels, cfg);
-  const processor = calcProcessorFromDimensions(dimensions.pixelsW, dimensions.pixelsH, cfg);
+  const processor = processorId
+    ? calcProcessorSufficiency(dimensions.pixelsW, dimensions.pixelsH, processorId)
+    : calcProcessorFromDimensions(dimensions.pixelsW, dimensions.pixelsH, cfg);
 
   // Override processor count in materials if needed
   materials.processor = processor.count;
