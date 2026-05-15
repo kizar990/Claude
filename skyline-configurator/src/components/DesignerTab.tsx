@@ -102,17 +102,13 @@ export function DesignerTab({ calc, overrideState }: Props) {
             />
           </Stat>
           <Stat label="Processor">
-            {!processor.specsConfirmed ? (
-              <span className="text-xs text-amber-600 dark:text-amber-400">
-                {processor.modelName} — specs unconfirmed
-              </span>
-            ) : processor.needsUpgrade ? (
+            {processor.needsUpgrade ? (
               <span className="text-xs text-red-600 dark:text-red-400 font-medium">
-                {processor.modelName} — {processor.count}× needed
+                {processor.modelName} — exceeds max
               </span>
             ) : (
               <span className="text-xs text-green-700 dark:text-green-400">
-                {processor.modelName} — sufficient
+                {processor.modelName} — OK
               </span>
             )}
           </Stat>

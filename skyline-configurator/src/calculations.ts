@@ -162,32 +162,20 @@ export function calcProcessorSufficiency(
   processorId: string
 ): ProcessorSpec {
   const model = PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0];
-  const { name, maxPixelsW, maxPixelsH, maxTotalPixels } = model;
-  const totalPixels = pixelsW * pixelsH;
+  const { name, maxPixelsW, maxPixelsH } = model;
+  const tier = maxPixelsW <= 1920 ? "HD" : "4K";
+  const label = `${name} (${tier})`;
 
-  if (maxPixelsW === 0 || maxPixelsH === 0 || maxTotalPixels === 0) {
-    return {
-      modelName: name,
-      count: 1,
-      needsUpgrade: false,
-      specsConfirmed: false,
-      warning: `⚠ ${name} pixel caps not confirmed — verify with Novastar data sheet`,
-    };
+  if (pixelsW <= maxPixelsW && pixelsH <= maxPixelsH) {
+    return { modelName: label, count: 1, needsUpgrade: false, specsConfirmed: true, warning: null };
   }
 
-  if (pixelsW <= maxPixelsW && pixelsH <= maxPixelsH && totalPixels <= maxTotalPixels) {
-    return { modelName: name, count: 1, needsUpgrade: false, specsConfirmed: true, warning: null };
-  }
-
-  const neededW = Math.ceil(pixelsW / maxPixelsW);
-  const neededH = Math.ceil(pixelsH / maxPixelsH);
-  const count = Math.max(neededW, neededH);
   return {
-    modelName: name,
-    count,
+    modelName: label,
+    count: 1,
     needsUpgrade: true,
     specsConfirmed: true,
-    warning: `⚠ Exceeds ${name} capacity (${pixelsW}×${pixelsH} px) — ${count} unit${count > 1 ? "s" : ""} needed`,
+    warning: `⚠ ${name} max content size is ${maxPixelsW}×${maxPixelsH} — screen is ${pixelsW}×${pixelsH} px`,
   };
 }
 

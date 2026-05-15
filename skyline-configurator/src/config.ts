@@ -38,9 +38,9 @@ export interface ProcessorModel {
 }
 
 export const PROCESSORS: ProcessorModel[] = [
-  { id: "mctrl660", name: "MCTRL660", maxPixelsW: 99999, maxPixelsH: 99999, maxTotalPixels: 2_600_000 }, // 4 ports × 650,000 px
-  { id: "vx600",    name: "VX600",    maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
-  { id: "vx1000",   name: "VX1000",   maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
-  { id: "vx2000",   name: "VX2000",   maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
-  { id: "mx40",     name: "MX40",     maxPixelsW: 0, maxPixelsH: 0, maxTotalPixels: 0 }, // TODO: confirm from Novastar spec sheet
+  { id: "mctrl660",  name: "MCTRL660",   maxPixelsW: 1920, maxPixelsH: 1200, maxTotalPixels: 2_300_000 },
+  { id: "vx600",     name: "VX600",      maxPixelsW: 4096, maxPixelsH: 2160, maxTotalPixels: 3_900_000 },
+  { id: "vx1000",    name: "VX1000",     maxPixelsW: 4096, maxPixelsH: 2160, maxTotalPixels: 6_500_000 },
+  { id: "vx2000pro", name: "VX2000 Pro", maxPixelsW: 4096, maxPixelsH: 2160, maxTotalPixels: 13_000_000 },
+  { id: "mx40pro",   name: "MX40 Pro",   maxPixelsW: 4096, maxPixelsH: 2160, maxTotalPixels: 8_800_000 },
 ];
