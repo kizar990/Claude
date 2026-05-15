@@ -213,7 +213,7 @@ function ClientPdfDocument({
                 <Text style={s.warnText}>{processor.warning}</Text>
               </View>
             )}
-            <View style={s.row}><Text style={s.label}>Width × Height</Text><Text style={s.value}>{Number(r("widthM", dimensions.widthM)).toFixed(1)} m × {Number(r("heightM", dimensions.heightM)).toFixed(1)} m</Text></View>
+            <View style={s.row}><Text style={s.label}>Width × Height</Text><Text style={s.value}>{Number(r("widthM", dimensions.widthM)).toFixed(3)} m × {Number(r("heightM", dimensions.heightM)).toFixed(3)} m</Text></View>
             <View style={s.row}><Text style={s.label}>Resolution</Text><Text style={s.value}>{r("pixelsW", dimensions.pixelsW)} × {r("pixelsH", dimensions.pixelsH)} px</Text></View>
             <View style={s.row}><Text style={s.label}>Aspect ratio</Text><Text style={s.value}>{r("aspectRatio", dimensions.aspectRatio)}</Text></View>
             <View style={s.row}><Text style={s.label}>Total panels</Text><Text style={s.value}>{r("totalPanels", dimensions.activePanels)}</Text></View>
@@ -239,10 +239,9 @@ function ClientPdfDocument({
             <Text style={s.sectionTitle}>Power Requirements</Text>
             <View style={s.row}><Text style={s.label}>Total power draw</Text><Text style={s.value}>{Math.round(Number(r("pow_totalWatts", power.totalWatts)))} W</Text></View>
             <View style={s.row}><Text style={s.label}>Current at 240V</Text><Text style={s.value}>{Number(r("pow_amps", power.amps)).toFixed(3)} A</Text></View>
-            <View style={s.row}><Text style={s.label}>Shuko 16A circuits required</Text><Text style={s.value}>{r("pow_shukoCircuits", power.circuits)}</Text></View>
+            <View style={s.row}><Text style={s.label}>13A circuits required</Text><Text style={s.value}>{r("pow_shukoCircuits", power.circuits)}</Text></View>
             <View style={s.row}><Text style={s.label}>Data lines</Text><Text style={s.value}>{r("pow_dataLines", power.dataLines)}</Text></View>
-            <View style={s.row}><Text style={s.label}>UTP data cables</Text><Text style={s.value}>{r("pow_utpData", power.utpDataCables)}</Text></View>
-            <View style={s.row}><Text style={s.label}>UTP backup cables</Text><Text style={s.value}>{r("pow_utpBackup", 0)}</Text></View>
+            <View style={s.row}><Text style={s.label}>Data links (UTP)</Text><Text style={s.value}>{r("pow_utpData", power.utpDataCables)}</Text></View>
           </>
         )}
 

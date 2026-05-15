@@ -10,11 +10,11 @@ interface Props {
 }
 
 export function DesignerTab({ calc, overrideState }: Props) {
-  const { dimensions, processor, contentSpec } = calc;
+  const { dimensions, power, processor, contentSpec } = calc;
   const { resetAll, overrides } = overrideState;
   const anyOverride = Object.keys(overrides).length > 0;
 
-  const fmt1 = (v: number | string) => Number(v).toFixed(1);
+  const fmt1 = (v: number | string) => Number(v).toFixed(3);
   const fmtInt = (v: number | string) => Math.round(Number(v)).toString();
   const fmtKg = (v: number | string) => `${Math.round(Number(v))} kg`;
 
@@ -100,6 +100,30 @@ export function DesignerTab({ calc, overrideState }: Props) {
               overrideState={overrideState}
               format={fmtKg}
             />
+          </Stat>
+        </div>
+      </section>
+
+      {/* Power summary */}
+      <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Power Requirements</h3>
+        </div>
+        <div className="p-4 grid grid-cols-3 gap-4">
+          <Stat label="Total draw">
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              {Math.round(resolve("pow_totalWatts", power.totalWatts, overrides) as number)} W
+            </span>
+          </Stat>
+          <Stat label="Amps at 240V">
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              {Number(resolve("pow_amps", power.amps, overrides)).toFixed(2)} A
+            </span>
+          </Stat>
+          <Stat label="13A circuits">
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              {resolve("pow_shukoCircuits", power.circuits, overrides)}×
+            </span>
           </Stat>
         </div>
       </section>

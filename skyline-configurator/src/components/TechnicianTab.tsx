@@ -172,10 +172,10 @@ export function TechnicianTab({ calc, overrideState }: Props) {
           <TechStat label="Amps at 240V">
             <EditableField fieldKey="pow_amps" auto={power.amps} overrideState={overrideState} format={fmtF3} unit="A" />
           </TechStat>
-          <TechStat label="Shuko 16A circuits">
+          <TechStat label="13A circuits">
             <EditableField fieldKey="pow_shukoCircuits" auto={power.circuits} overrideState={overrideState} format={fmtInt} />
             <span className="text-xs text-gray-400 ml-1">
-              (ceil({Math.round(resolve("pow_totalWatts", power.totalWatts, overrides) as number)} ÷ 3000)
+              (ceil({Math.round(resolve("pow_totalWatts", power.totalWatts, overrides) as number)} ÷ 2496)
             </span>
           </TechStat>
           <TechStat label="Data lines">
@@ -184,11 +184,8 @@ export function TechnicianTab({ calc, overrideState }: Props) {
               (ceil({dimensions.activePanels} ÷ 13))
             </span>
           </TechStat>
-          <TechStat label="UTP data cables">
+          <TechStat label="Data links (UTP)">
             <EditableField fieldKey="pow_utpData" auto={power.utpDataCables} overrideState={overrideState} format={fmtInt} />
-          </TechStat>
-          <TechStat label="UTP backup cables">
-            <EditableField fieldKey="pow_utpBackup" auto={0} overrideState={overrideState} format={fmtInt} />
           </TechStat>
         </div>
         <div className="mx-4 mb-4 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded text-xs text-gray-500 dark:text-gray-400 font-mono">
