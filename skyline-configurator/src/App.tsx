@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Save, FilePlus } from "lucide-react";
 import { InputSection } from "./components/InputSection";
 import { DesignerTab } from "./components/DesignerTab";
+import { TechnicianTab } from "./components/TechnicianTab";
 import { SaveSidebar } from "./components/SaveSidebar";
 import { calcAll } from "./calculations";
 import { useOverrides } from "./useOverrides";
@@ -202,9 +203,7 @@ export default function App() {
           )}
 
           {tab === "technician" && techMode && (
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 text-center text-gray-400 text-sm">
-              Technician tab — coming next
-            </div>
+            <TechnicianTab calc={calc} overrideState={overrideState} />
           )}
 
           {tab === "render" && (
