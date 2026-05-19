@@ -2,10 +2,11 @@ import { useState } from "react";
 import { RotateCcw, Plus, Trash2 } from "lucide-react";
 import { EditableField } from "./EditableField";
 import { ProcessorBadge } from "./ProcessorBadge";
+import { ScreenLayoutDiagram } from "./ScreenLayoutDiagram";
 import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
-import { PROCESSORS } from "../config";
+import { PROCESSORS, CONFIG } from "../config";
 
 interface CustomLine {
   id: string;
@@ -110,6 +111,25 @@ export function TechnicianTab({ calc, overrideState, processorId, onProcessorCha
           <ProcessorBadge processor={processor} />
         </div>
       </section>
+
+      {/* Screen layout */}
+      {dimensions.activePanels > 0 && (
+        <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+          <SectionHeader title="Screen Layout" />
+          <div className="px-6 py-5">
+            <ScreenLayoutDiagram
+              columns={Math.round(dimensions.pixelsW / CONFIG.PANEL_PIXELS_W)}
+              rows={Math.round(dimensions.pixelsH / CONFIG.PANEL_PIXELS_H)}
+              widthM={dimensions.widthM}
+              heightM={dimensions.heightM}
+              panelWidthMm={CONFIG.PANEL_WIDTH_MM}
+              panelHeightMm={CONFIG.PANEL_HEIGHT_MM}
+              pixelPitch={CONFIG.PIXEL_PITCH}
+              activePanels={dimensions.activePanels}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Material list */}
       <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">

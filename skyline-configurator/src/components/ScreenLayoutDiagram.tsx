@@ -7,13 +7,27 @@ interface Props {
   panelHeightMm: number;
   pixelPitch: string;
   activePanels: number;
+  // Optional: set of flat panel indices (row*cols+col) that are blank
+  blankIndices?: Set<number>;
+  // Optional: port assignments — flat index → port number (1-based, 0 = unassigned)
+  // Reserved for Phase 2; ignored here
+  portMap?: number[];
 }
 
-const ORANGE = "#C0392B";
-const PANEL_FILL = "#EBF0F8";
+const CALLOUT_COLOR = "#D63025";
+const PANEL_FILL   = "#EBF0F8";
+const BLANK_FILL   = "#E2E8F0";
 const PANEL_STROKE = "#B8C8DC";
-const LABEL_COLOR = "#1A202C";
+const GRID_BORDER  = "#8BA3C0";
 const CAPTION_COLOR = "#718096";
+
+// Layout geometry (all in SVG user units)
+const GRID_W      = 540;   // fixed width; viewBox scales responsively
+const CALLOUT_TOP = 46;    // vertical room above grid for width callout
+const CALLOUT_R   = 80;    // horizontal room right of grid for height callout
+const CAPTION_H   = 26;    // room below grid for caption text
+const TICK_HALF   = 7;     // half-length of dimension end-ticks
+const LABEL_GAP   = 11;    // pixels between callout line and label text
 
 export function ScreenLayoutDiagram({
   columns,
@@ -24,31 +38,25 @@ export function ScreenLayoutDiagram({
   panelHeightMm,
   pixelPitch,
   activePanels,
+  blankIndices,
 }: Props) {
   if (columns <= 0 || rows <= 0) return null;
 
-  // Layout constants (in SVG user units)
-  const CALLOUT_TOP = 44;    // space above grid for width callout
-  const CALLOUT_RIGHT = 72;  // space right of grid for height callout
-  const TICK = 7;            // half-length of end ticks
-  const LABEL_GAP = 12;      // label offset from callout line
-  const CAPTION_H = 28;      // space below grid for caption
+  // Panels are physically square — cell width = cell height in SVG units
+  const cellW = GRID_W / columns;
+  const cellH = cellW; // preserves square panels regardless of grid shape
+  const gridH = cellH * rows;
 
-  // Grid dimensions — maintain physical aspect ratio, cap height
-  const MAX_GRID_W = 520;
-  const aspectRatio = (columns * panelWidthMm) / (rows * panelHeightMm);
-  const gridW = MAX_GRID_W;
-  const gridH = Math.round(gridW / aspectRatio);
-
-  const cellW = gridW / columns;
-  const cellH = gridH / rows;
-
-  const totalW = gridW + CALLOUT_RIGHT;
+  const totalW = GRID_W + CALLOUT_R;
   const totalH = CALLOUT_TOP + gridH + CAPTION_H;
 
-  // Grid origin
+  // Grid top-left
   const gx = 0;
   const gy = CALLOUT_TOP;
+
+  // Callout positions
+  const widthLineY  = gy - CALLOUT_TOP / 2;
+  const heightLineX = gx + GRID_W + 22;
 
   const wLabel = `${widthM.toFixed(3)} m`;
   const hLabel = `${heightM.toFixed(3)} m`;
@@ -58,82 +66,85 @@ export function ScreenLayoutDiagram({
       viewBox={`0 0 ${totalW} ${totalH}`}
       className="w-full h-auto"
       aria-label="Screen layout diagram"
+      style={{ maxHeight: 480 }}
     >
-      {/* ── Panel grid ──────────────────────────────────── */}
-      <rect x={gx} y={gy} width={gridW} height={gridH} fill={PANEL_FILL} stroke={PANEL_STROKE} strokeWidth={0.5} />
-      {/* Vertical dividers */}
-      {Array.from({ length: columns - 1 }, (_, i) => (
-        <line
-          key={`v${i}`}
-          x1={gx + cellW * (i + 1)} y1={gy}
-          x2={gx + cellW * (i + 1)} y2={gy + gridH}
-          stroke={PANEL_STROKE} strokeWidth={0.75}
-        />
-      ))}
-      {/* Horizontal dividers */}
-      {Array.from({ length: rows - 1 }, (_, i) => (
-        <line
-          key={`h${i}`}
-          x1={gx} y1={gy + cellH * (i + 1)}
-          x2={gx + gridW} y2={gy + cellH * (i + 1)}
-          stroke={PANEL_STROKE} strokeWidth={0.75}
-        />
-      ))}
+      {/* ── Panel cells ───────────────────────────────── */}
+      {Array.from({ length: rows }, (_, r) =>
+        Array.from({ length: columns }, (_, c) => {
+          const idx = r * columns + c;
+          const isBlank = blankIndices?.has(idx);
+          return (
+            <rect
+              key={idx}
+              x={gx + c * cellW}
+              y={gy + r * cellH}
+              width={cellW}
+              height={cellH}
+              fill={isBlank ? BLANK_FILL : PANEL_FILL}
+              stroke={PANEL_STROKE}
+              strokeWidth={0.75}
+            />
+          );
+        })
+      )}
 
-      {/* ── Width callout ────────────────────────────────── */}
+      {/* ── Grid outer border ─────────────────────────── */}
+      <rect
+        x={gx} y={gy}
+        width={GRID_W} height={gridH}
+        fill="none"
+        stroke={GRID_BORDER}
+        strokeWidth={1}
+      />
+
+      {/* ── Width callout ─────────────────────────────── */}
       {/* Left tick */}
-      <line x1={gx} y1={gy - CALLOUT_TOP / 2 - TICK} x2={gx} y2={gy - CALLOUT_TOP / 2 + TICK} stroke={ORANGE} strokeWidth={1.5} />
+      <line x1={gx} y1={widthLineY - TICK_HALF} x2={gx} y2={widthLineY + TICK_HALF}
+        stroke={CALLOUT_COLOR} strokeWidth={1.5} />
       {/* Right tick */}
-      <line x1={gx + gridW} y1={gy - CALLOUT_TOP / 2 - TICK} x2={gx + gridW} y2={gy - CALLOUT_TOP / 2 + TICK} stroke={ORANGE} strokeWidth={1.5} />
-      {/* Horizontal line */}
-      <line x1={gx} y1={gy - CALLOUT_TOP / 2} x2={gx + gridW} y2={gy - CALLOUT_TOP / 2} stroke={ORANGE} strokeWidth={1.5} />
-      {/* Width label */}
+      <line x1={gx + GRID_W} y1={widthLineY - TICK_HALF} x2={gx + GRID_W} y2={widthLineY + TICK_HALF}
+        stroke={CALLOUT_COLOR} strokeWidth={1.5} />
+      {/* Horizontal span */}
+      <line x1={gx} y1={widthLineY} x2={gx + GRID_W} y2={widthLineY}
+        stroke={CALLOUT_COLOR} strokeWidth={1.5} />
+      {/* Label */}
       <text
-        x={gx + gridW / 2}
-        y={gy - CALLOUT_TOP / 2 - LABEL_GAP}
+        x={gx + GRID_W / 2} y={widthLineY - LABEL_GAP}
         textAnchor="middle"
-        fontSize={11}
-        fontFamily="system-ui, sans-serif"
-        fontWeight="600"
-        fill={ORANGE}
+        fontSize={11} fontFamily="system-ui,sans-serif" fontWeight="600"
+        fill={CALLOUT_COLOR}
       >
         {wLabel}
       </text>
 
-      {/* ── Height callout ───────────────────────────────── */}
+      {/* ── Height callout ────────────────────────────── */}
       {/* Top tick */}
-      <line x1={gx + gridW + 16} y1={gy} x2={gx + gridW + 32} y2={gy} stroke={ORANGE} strokeWidth={1.5} />
+      <line x1={heightLineX - 8} y1={gy} x2={heightLineX + 8} y2={gy}
+        stroke={CALLOUT_COLOR} strokeWidth={1.5} />
       {/* Bottom tick */}
-      <line x1={gx + gridW + 16} y1={gy + gridH} x2={gx + gridW + 32} y2={gy + gridH} stroke={ORANGE} strokeWidth={1.5} />
-      {/* Vertical line */}
-      <line x1={gx + gridW + 24} y1={gy} x2={gx + gridW + 24} y2={gy + gridH} stroke={ORANGE} strokeWidth={1.5} />
-      {/* Height label */}
+      <line x1={heightLineX - 8} y1={gy + gridH} x2={heightLineX + 8} y2={gy + gridH}
+        stroke={CALLOUT_COLOR} strokeWidth={1.5} />
+      {/* Vertical span */}
+      <line x1={heightLineX} y1={gy} x2={heightLineX} y2={gy + gridH}
+        stroke={CALLOUT_COLOR} strokeWidth={1.5} />
+      {/* Label */}
       <text
-        x={gx + gridW + 24 + LABEL_GAP}
-        y={gy + gridH / 2}
-        textAnchor="start"
-        dominantBaseline="middle"
-        fontSize={11}
-        fontFamily="system-ui, sans-serif"
-        fontWeight="600"
-        fill={ORANGE}
+        x={heightLineX + LABEL_GAP} y={gy + gridH / 2}
+        textAnchor="start" dominantBaseline="middle"
+        fontSize={11} fontFamily="system-ui,sans-serif" fontWeight="600"
+        fill={CALLOUT_COLOR}
       >
         {hLabel}
       </text>
 
-      {/* ── Caption ─────────────────────────────────────── */}
+      {/* ── Caption ───────────────────────────────────── */}
       <text
-        x={gx}
-        y={gy + gridH + 18}
-        fontSize={10}
-        fontFamily="system-ui, sans-serif"
+        x={gx} y={gy + gridH + 18}
+        fontSize={10} fontFamily="system-ui,sans-serif"
         fill={CAPTION_COLOR}
       >
         {`${columns} × ${rows} panels  ·  ${panelWidthMm} × ${panelHeightMm} mm per panel  ·  ${pixelPitch}  ·  ${activePanels} panels total`}
       </text>
-
-      {/* ── Outer border ────────────────────────────────── */}
-      <rect x={gx} y={gy} width={gridW} height={gridH} fill="none" stroke={LABEL_COLOR} strokeWidth={0.75} opacity={0.2} />
     </svg>
   );
 }
