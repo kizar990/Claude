@@ -1,73 +1,64 @@
-# React + TypeScript + Vite
+# Skyline LED Wall Configurator
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A production tool for Skyline Whitespace AV technicians and project managers to configure LED wall specifications, generate material lists, and export client/tech PDFs.
 
-Currently, two official plugins are available:
+**Stack:** React 19 · TypeScript · Vite · Tailwind CSS v4 · @react-pdf/renderer
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev        # dev server at http://localhost:5173
+npm run test       # vitest unit tests (46 tests)
+npm run build      # production build → dist/
+npm run preview    # serve the production build locally
+npm run gen-pdf    # generate a sample client PDF to scripts/sample-client.pdf
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Project structure
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+src/
+  calculations.ts      # all business logic (panels, power, materials, processor)
+  calculations.test.ts # vitest unit tests
+  config.ts            # panel specs, processor models, thresholds
+  App.tsx              # root component, state management
+  store.ts             # localStorage save/load
+  useOverrides.ts      # "edit everything" override hook
+  components/
+    DesignerTab.tsx     # PM/designer view
+    TechnicianTab.tsx   # technician detail view
+    EditableField.tsx   # inline override widget
+    ProcessorBadge.tsx  # green/amber/red processor sufficiency badge
+    ClientPdfExport.tsx # branded client PDF (two-page)
+    TechPdfExport.tsx   # technician material list PDF
+    PdfBranding.tsx     # shared Skyline Whitespace brand header/footer
+scripts/
+  gen-sample-pdf.tsx   # standalone PDF generation script
+```
+
+## Deploying to Vercel
+
+The repo includes a `vercel.json` that handles everything automatically.
+
+### First deploy
+
+1. Push this repo (or the branch) to GitHub.
+2. Go to [vercel.com](https://vercel.com) → **Add New Project**.
+3. Import the GitHub repository.
+4. Vercel will auto-detect Vite. Confirm these settings (they match `vercel.json`):
+   - **Framework Preset:** Vite
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+   - **Install Command:** `npm install`
+5. Click **Deploy**. No environment variables are required — the app is fully client-side.
+
+### Subsequent deploys
+
+Push to the connected branch and Vercel redeploys automatically. For manual redeploy, click **Redeploy** in the Vercel dashboard.
+
+### Custom domain
+
+In the Vercel project → **Settings → Domains**, add your domain and follow the DNS instructions. The SPA rewrite rule in `vercel.json` ensures all routes serve `index.html` correctly.
