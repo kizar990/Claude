@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RotateCcw, Plus, Trash2 } from "lucide-react";
 import { EditableField } from "./EditableField";
+import { ProcessorBadge } from "./ProcessorBadge";
 import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
@@ -106,15 +107,7 @@ export function TechnicianTab({ calc, overrideState, processorId, onProcessorCha
               ))}
             </select>
           </div>
-          {processor.needsUpgrade ? (
-            <span className="text-xs text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded px-2 py-1">
-              {processor.warning}
-            </span>
-          ) : (
-            <span className="text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded px-2 py-1">
-              ✓ {processor.modelName} — OK for {dimensions.pixelsW}×{dimensions.pixelsH} px
-            </span>
-          )}
+          <ProcessorBadge processor={processor} />
         </div>
       </section>
 
@@ -134,7 +127,13 @@ export function TechnicianTab({ calc, overrideState, processorId, onProcessorCha
           <MatRow label="Neutrik Couplers" fieldKey="mat_neutrikCouplers" auto={materials.neutrikCouplers} overrideState={overrideState} note="fixed" />
           <MatRow label="PROC Flightcase" fieldKey="mat_procFlightcase" auto={materials.procFlightcase} overrideState={overrideState} note="1 per screen" />
           <MatRow label="LED Spares" fieldKey="mat_ledSpares" auto={materials.ledSpares} overrideState={overrideState} note={`ceil(${dimensions.activePanels} × 10%)`} />
-          <MatRow label={`Processor (${processor.needsUpgrade ? "upgrade needed" : "HD"})`} fieldKey="mat_processor" auto={materials.processor} overrideState={overrideState} accent={processor.needsUpgrade ? "red" : undefined} />
+          <MatRow
+            label={`Processor (${processor.status === "insufficient" ? "upgrade needed" : processor.status === "tight" ? "tight fit" : "OK"})`}
+            fieldKey="mat_processor"
+            auto={materials.processor}
+            overrideState={overrideState}
+            accent={processor.status === "insufficient" ? "red" : processor.status === "tight" ? "amber" : undefined}
+          />
           <MatRow label="POWER/HDMI/USB-A/UTP kit" fieldKey="mat_powerHdmiUsbUtp" auto={materials.powerHdmiUsbUtp} overrideState={overrideState} indent />
           <MatRow label="Mediaplayer (HD)" fieldKey="mat_mediaplayer" auto={materials.mediaplayer} overrideState={overrideState} />
           <MatRow label="POWER/HDMI/USB stick kit" fieldKey="mat_powerHdmiUsbStick" auto={materials.powerHdmiUsbStick} overrideState={overrideState} indent />
@@ -258,7 +257,7 @@ function MatRow({
   overrideState: OverrideState;
   note?: string;
   indent?: boolean;
-  accent?: "red";
+  accent?: "red" | "amber";
 }) {
   const { isOverridden } = overrideState;
   const overridden = isOverridden(fieldKey);
@@ -275,6 +274,8 @@ function MatRow({
           className={`text-sm truncate ${
             accent === "red"
               ? "text-red-700 dark:text-red-400 font-medium"
+              : accent === "amber"
+              ? "text-amber-700 dark:text-amber-400 font-medium"
               : "text-gray-700 dark:text-gray-300"
           }`}
         >

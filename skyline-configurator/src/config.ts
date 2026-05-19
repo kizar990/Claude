@@ -24,6 +24,8 @@ export const CONFIG = {
   FITKIT_PER_CASE: 10,
   NEUTRIK_COUPLER_FIXED: 4,
   LED_SPARES_PCT: 0.1,
+  // Processor panel-load headroom: flag as "tight" above this fraction of capacity
+  PROCESSOR_TIGHT_THRESHOLD: 0.85,
 };
 
 export type Config = typeof CONFIG;
@@ -31,16 +33,75 @@ export type Config = typeof CONFIG;
 export interface ProcessorModel {
   id: string;
   name: string;
-  // TODO: confirm from Novastar spec sheet
   maxPixelsW: number;
   maxPixelsH: number;
   maxTotalPixels: number;
+  // Port topology — used for panel-load sufficiency check
+  ports: number;
+  // Maximum panels per port at comfortable operating load (practical wiring limit)
+  panelsPerPort: number;
+  specsConfirmed: boolean;
 }
 
 export const PROCESSORS: ProcessorModel[] = [
-  { id: "mctrl660",  name: "MCTRL660",   maxPixelsW: 1920, maxPixelsH: 1200, maxTotalPixels: 2_300_000 },
-  { id: "vx600",     name: "VX600",      maxPixelsW: 4096, maxPixelsH: 2160, maxTotalPixels: 3_900_000 },
-  { id: "vx1000",    name: "VX1000",     maxPixelsW: 4096, maxPixelsH: 2160, maxTotalPixels: 6_500_000 },
-  { id: "vx2000pro", name: "VX2000 Pro", maxPixelsW: 4096, maxPixelsH: 2160, maxTotalPixels: 13_000_000 },
-  { id: "mx40pro",   name: "MX40 Pro",   maxPixelsW: 4096, maxPixelsH: 2160, maxTotalPixels: 8_800_000 },
+  {
+    id: "mctrl660",
+    name: "MCTRL660",
+    maxPixelsW: 1920,
+    maxPixelsH: 1200,
+    maxTotalPixels: 2_300_000,
+    ports: 4,
+    panelsPerPort: 8,
+    specsConfirmed: true,
+  },
+  {
+    id: "mctrl660pro",
+    name: "MCTRL660 Pro",
+    maxPixelsW: 1920,
+    maxPixelsH: 1200,
+    maxTotalPixels: 2_300_000,
+    ports: 6,
+    panelsPerPort: 8,
+    specsConfirmed: true,
+  },
+  {
+    id: "vx600",
+    name: "VX600",
+    maxPixelsW: 4096,
+    maxPixelsH: 2160,
+    maxTotalPixels: 3_900_000,
+    ports: 6,
+    panelsPerPort: 10,
+    specsConfirmed: false,
+  },
+  {
+    id: "vx1000",
+    name: "VX1000",
+    maxPixelsW: 4096,
+    maxPixelsH: 2160,
+    maxTotalPixels: 6_500_000,
+    ports: 10,
+    panelsPerPort: 10,
+    specsConfirmed: false,
+  },
+  {
+    id: "vx2000pro",
+    name: "VX2000 Pro",
+    maxPixelsW: 4096,
+    maxPixelsH: 2160,
+    maxTotalPixels: 13_000_000,
+    ports: 20,
+    panelsPerPort: 10,
+    specsConfirmed: false,
+  },
+  {
+    id: "mx40pro",
+    name: "MX40 Pro",
+    maxPixelsW: 4096,
+    maxPixelsH: 2160,
+    maxTotalPixels: 8_800_000,
+    ports: 10,
+    panelsPerPort: 10,
+    specsConfirmed: false,
+  },
 ];

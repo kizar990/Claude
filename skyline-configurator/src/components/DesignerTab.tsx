@@ -1,5 +1,6 @@
 import { RotateCcw } from "lucide-react";
 import { EditableField } from "./EditableField";
+import { ProcessorBadge } from "./ProcessorBadge";
 import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
@@ -102,15 +103,7 @@ export function DesignerTab({ calc, overrideState }: Props) {
             />
           </Stat>
           <Stat label="Processor">
-            {processor.needsUpgrade ? (
-              <span className="text-xs text-red-600 dark:text-red-400 font-medium">
-                {processor.modelName} — exceeds max
-              </span>
-            ) : (
-              <span className="text-xs text-green-700 dark:text-green-400">
-                {processor.modelName} — OK
-              </span>
-            )}
+            <ProcessorBadge processor={processor} compact />
           </Stat>
         </div>
       </section>
@@ -161,10 +154,14 @@ export function DesignerTab({ calc, overrideState }: Props) {
         </div>
       </section>
 
-      {/* Processor warning */}
-      {processor.needsUpgrade && (
-        <div className="flex items-start gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl text-sm text-red-800 dark:text-red-300">
-          <span className="text-lg leading-none mt-0.5">⚠</span>
+      {/* Processor warning / tight notice */}
+      {processor.warning && (
+        <div className={`flex items-start gap-2 px-4 py-3 rounded-xl text-sm ${
+          processor.status === "insufficient"
+            ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-800 dark:text-red-300"
+            : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-300"
+        }`}>
+          <span className="text-lg leading-none mt-0.5">{processor.status === "insufficient" ? "⚠" : "⚡"}</span>
           <span>{processor.warning}</span>
         </div>
       )}

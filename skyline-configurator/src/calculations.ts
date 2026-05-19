@@ -48,9 +48,16 @@ export interface PowerSpec {
 export interface ProcessorSpec {
   modelName: string;
   count: number;
+  /** "ok" | "tight" (>85% capacity) | "insufficient" (>100% capacity) */
+  status: "ok" | "tight" | "insufficient";
+  /** true when status === "insufficient" — kept for backward compat */
   needsUpgrade: boolean;
   specsConfirmed: boolean;
   warning: string | null;
+  /** 0–1 fraction of the processor's total panel capacity used */
+  panelLoad: number;
+  /** Total panels this processor can drive (ports × panelsPerPort) */
+  panelCapacity: number;
 }
 
 export interface FullConfig {
@@ -128,7 +135,10 @@ export function calcPower(activePanels: number, cfg: Config = CONFIG): PowerSpec
 }
 
 export function calcProcessor(_activePanels: number, _cfg: Config = CONFIG): ProcessorSpec {
-  return { modelName: "", count: 1, needsUpgrade: false, specsConfirmed: true, warning: null };
+  return {
+    modelName: "", count: 1, status: "ok", needsUpgrade: false,
+    specsConfirmed: true, warning: null, panelLoad: 0, panelCapacity: 0,
+  };
 }
 
 export function calcProcessorFromDimensions(
@@ -138,9 +148,10 @@ export function calcProcessorFromDimensions(
 ): ProcessorSpec {
   const maxW = cfg.PROCESSOR_MAX_PIXELS_W;
   const maxH = cfg.PROCESSOR_MAX_PIXELS_H;
+  const base = { specsConfirmed: true, panelLoad: 0, panelCapacity: 0 };
 
   if (pixelsW <= maxW && pixelsH <= maxH) {
-    return { modelName: "HD", count: 1, needsUpgrade: false, specsConfirmed: true, warning: null };
+    return { ...base, modelName: "HD", count: 1, status: "ok", needsUpgrade: false, warning: null };
   }
 
   const neededW = Math.ceil(pixelsW / maxW);
@@ -148,10 +159,11 @@ export function calcProcessorFromDimensions(
   const count = Math.max(neededW, neededH);
 
   return {
+    ...base,
     modelName: "HD",
     count,
+    status: "insufficient",
     needsUpgrade: true,
-    specsConfirmed: true,
     warning: `⚠ Exceeds HD processor (${pixelsW}×${pixelsH} px) — ${count} processor${count > 1 ? "s" : ""} needed or upgrade to 4K processor`,
   };
 }
@@ -159,23 +171,52 @@ export function calcProcessorFromDimensions(
 export function calcProcessorSufficiency(
   pixelsW: number,
   pixelsH: number,
-  processorId: string
+  activePanels: number,
+  processorId: string,
+  cfg: Config = CONFIG
 ): ProcessorSpec {
   const model = PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0];
-  const { name, maxPixelsW, maxPixelsH } = model;
+  const { name, maxPixelsW, maxPixelsH, ports, panelsPerPort } = model;
   const tier = maxPixelsW <= 1920 ? "HD" : "4K";
   const label = `${name} (${tier})`;
+  const panelCapacity = ports * panelsPerPort;
+  const panelLoad = activePanels / panelCapacity;
+  const TIGHT = cfg.PROCESSOR_TIGHT_THRESHOLD;
 
-  if (pixelsW <= maxPixelsW && pixelsH <= maxPixelsH) {
-    return { modelName: label, count: 1, needsUpgrade: false, specsConfirmed: true, warning: null };
+  // Condition A: pixel resolution fits within controller's max W×H
+  const pixelsFit = pixelsW <= maxPixelsW && pixelsH <= maxPixelsH;
+
+  // Condition B: panel count within port capacity
+  const panelsFit = activePanels <= panelCapacity;
+
+  if (!pixelsFit) {
+    return {
+      modelName: label, count: 1, status: "insufficient", needsUpgrade: true,
+      specsConfirmed: model.specsConfirmed, panelLoad, panelCapacity,
+      warning: `⚠ ${name} max content size is ${maxPixelsW}×${maxPixelsH} — screen is ${pixelsW}×${pixelsH} px`,
+    };
+  }
+
+  if (!panelsFit) {
+    return {
+      modelName: label, count: 1, status: "insufficient", needsUpgrade: true,
+      specsConfirmed: model.specsConfirmed, panelLoad, panelCapacity,
+      warning: `⚠ ${name} can drive ${panelCapacity} panels (${ports} ports × ${panelsPerPort}) — screen has ${activePanels}`,
+    };
+  }
+
+  if (panelLoad > TIGHT) {
+    return {
+      modelName: label, count: 1, status: "tight", needsUpgrade: false,
+      specsConfirmed: model.specsConfirmed, panelLoad, panelCapacity,
+      warning: `${name} at ${Math.round(panelLoad * 100)}% panel capacity (${activePanels}/${panelCapacity}) — consider a larger processor`,
+    };
   }
 
   return {
-    modelName: label,
-    count: 1,
-    needsUpgrade: true,
-    specsConfirmed: true,
-    warning: `⚠ ${name} max content size is ${maxPixelsW}×${maxPixelsH} — screen is ${pixelsW}×${pixelsH} px`,
+    modelName: label, count: 1, status: "ok", needsUpgrade: false,
+    specsConfirmed: model.specsConfirmed, panelLoad, panelCapacity,
+    warning: null,
   };
 }
 
@@ -188,7 +229,7 @@ export function calcAll(
   const materials = calcMaterials(dimensions.activePanels, cfg);
   const power = calcPower(dimensions.activePanels, cfg);
   const processor = processorId
-    ? calcProcessorSufficiency(dimensions.pixelsW, dimensions.pixelsH, processorId)
+    ? calcProcessorSufficiency(dimensions.pixelsW, dimensions.pixelsH, dimensions.activePanels, processorId, cfg)
     : calcProcessorFromDimensions(dimensions.pixelsW, dimensions.pixelsH, cfg);
 
   // Override processor count in materials if needed

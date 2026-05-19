@@ -4,6 +4,7 @@ import {
   calcMaterials,
   calcPower,
   calcProcessorFromDimensions,
+  calcProcessorSufficiency,
   calcAll,
   snapToPanel,
   metresToInput,
@@ -113,6 +114,60 @@ describe("calcProcessorFromDimensions", () => {
     const p = calcProcessorFromDimensions(2304, 1152);
     expect(p.needsUpgrade).toBe(true);
     expect(p.count).toBeGreaterThanOrEqual(2);
+    expect(p.warning).toMatch(/⚠/);
+  });
+});
+
+// Helper: calcProcessorSufficiency with panel count, default cfg
+function sufficiency(cols: number, rows: number, processorId: string) {
+  const panels = cols * rows;
+  const pixelsW = cols * 192;
+  const pixelsH = rows * 192;
+  return calcProcessorSufficiency(pixelsW, pixelsH, panels, processorId);
+}
+
+describe("calcProcessorSufficiency — three-state panel-load check", () => {
+  it("6×5 (30 panels) with MCTRL660 (32 cap) → TIGHT at 93.75%", () => {
+    const p = sufficiency(6, 5, "mctrl660");
+    expect(p.status).toBe("tight");
+    expect(p.needsUpgrade).toBe(false);
+    expect(p.panelCapacity).toBe(32); // 4 ports × 8
+    expect(p.panelLoad).toBeCloseTo(30 / 32, 4);
+    expect(p.warning).toMatch(/93%|94%/);
+  });
+
+  it("6×5 (30 panels) with MCTRL660 Pro (48 cap) → OK at 62.5%", () => {
+    const p = sufficiency(6, 5, "mctrl660pro");
+    expect(p.status).toBe("ok");
+    expect(p.needsUpgrade).toBe(false);
+    expect(p.panelCapacity).toBe(48); // 6 ports × 8
+    expect(p.warning).toBeNull();
+  });
+
+  it("7×3 (21 panels) with MCTRL660 (32 cap) → OK at 65.6%", () => {
+    const p = sufficiency(7, 3, "mctrl660");
+    expect(p.status).toBe("ok");
+    expect(p.panelLoad).toBeCloseTo(21 / 32, 4);
+    expect(p.warning).toBeNull();
+  });
+
+  it("7×4 (28 panels) with MCTRL660 (32 cap) → TIGHT at 87.5%", () => {
+    const p = sufficiency(7, 4, "mctrl660");
+    expect(p.status).toBe("tight");
+    expect(p.panelLoad).toBeCloseTo(28 / 32, 4);
+  });
+
+  it("8×5 (40 panels) with MCTRL660 (32 cap) → INSUFFICIENT", () => {
+    const p = sufficiency(8, 5, "mctrl660");
+    expect(p.status).toBe("insufficient");
+    expect(p.needsUpgrade).toBe(true);
+    expect(p.warning).toMatch(/⚠/);
+  });
+
+  it("pixel resolution failure also gives INSUFFICIENT", () => {
+    // MCTRL660 max 1920×1200; 12×7 = 2304×1344 exceeds it
+    const p = sufficiency(12, 7, "mctrl660");
+    expect(p.status).toBe("insufficient");
     expect(p.warning).toMatch(/⚠/);
   });
 });
