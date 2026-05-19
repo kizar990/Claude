@@ -1,45 +1,45 @@
 /**
  * Shared Skyline Whitespace brand components for @react-pdf/renderer documents.
- * Used by both ClientPdfExport and TechPdfExport.
- *
- * Logo: place the white PNG at src/assets/brand/logo-white.png
- * Until then the text-based logo is used as fallback.
+ * Logo: place white PNG at src/assets/brand/logo-white.png — text fallback used until then.
  */
 
-import React from "react";
 import { View, Text, StyleSheet } from "@react-pdf/renderer";
 
-// ── Brand colour palette ─────────────────────────────────────────────────────
+// ── Brand colour palette (sourced from SW / WS logo assets) ─────────────────
 export const C = {
-  navy:     "#0F1C3F",   // header band
-  blue:     "#1A56A0",   // section headings, accent
-  red:      "#C53030",   // dimension callouts
-  dark:     "#1A202C",   // primary body text
+  navy:     "#0F1C3F",   // primary — header band, body text
+  orange:   "#D63025",   // SW lightning-bolt accent — section rules, callout borders
+  coral:    "#E8724A",   // WS blob warm accent
+  skyBlue:  "#1A56A0",   // WS blob cool accent — metadata labels
+  dark:     "#1A202C",   // body text
   mid:      "#4A5568",   // secondary text
-  muted:    "#718096",   // labels, footer address
-  rule:     "#CBD5E0",   // borders, rules
+  muted:    "#718096",   // footer address, table labels
+  rule:     "#CBD5E0",   // borders, dividers
   pale:     "#EDF2F7",   // alternating table rows
-  paleBlu:  "#EBF4FF",   // callout box background
+  paleBlu:  "#EBF4FF",   // content spec callout bg
   white:    "#FFFFFF",
 } as const;
 
-// ── Shared layout constants ──────────────────────────────────────────────────
-export const MARGIN_H   = 36;   // left / right page margin (pt)
-export const HEADER_H   = 58;   // header band height
-export const FOOTER_H   = 96;   // footer strip height (content + metadata table)
+// ── Layout constants ─────────────────────────────────────────────────────────
+export const MARGIN_H = 36;
+export const HEADER_H = 62;   // includes 3pt orange accent stripe at bottom
+export const FOOTER_H = 96;
 
-// ── Shared StyleSheet ────────────────────────────────────────────────────────
+// ── StyleSheet ───────────────────────────────────────────────────────────────
 export const brand = StyleSheet.create({
-  // Header band
+  // Header
   headerBand: {
     backgroundColor: C.navy,
-    height: HEADER_H,
     paddingHorizontal: MARGIN_H,
     paddingBottom: 10,
-    paddingTop: 8,
+    paddingTop: 10,
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
+  },
+  headerAccentBar: {
+    height: 3,
+    backgroundColor: C.orange,
   },
   logoBlock: {
     flexDirection: "column",
@@ -74,22 +74,21 @@ export const brand = StyleSheet.create({
     color: C.white,
   },
 
-  // Footer strip
+  // Footer
   footerStrip: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     height: FOOTER_H,
-    borderTopWidth: 0.75,
-    borderTopColor: C.rule,
+    borderTopWidth: 2,
+    borderTopColor: C.orange,
     flexDirection: "row",
     alignItems: "flex-start",
     paddingHorizontal: MARGIN_H,
     paddingTop: 8,
   },
   footerAddress: {
-    flex: 1,
     fontSize: 6.5,
     color: C.muted,
     lineHeight: 1.6,
@@ -100,11 +99,13 @@ export const brand = StyleSheet.create({
     marginTop: 6,
   },
 
-  // Metadata title block (bottom-right of footer)
+  // Title block (bottom-right)
   metaBlock: {
-    width: 198,
+    width: 200,
     borderWidth: 0.5,
     borderColor: C.rule,
+    borderTopWidth: 2,
+    borderTopColor: C.navy,
   },
   metaBlockRow: {
     flexDirection: "row",
@@ -115,7 +116,7 @@ export const brand = StyleSheet.create({
     flexDirection: "row",
   },
   metaBlockKey: {
-    width: 70,
+    width: 72,
     fontSize: 6,
     color: C.muted,
     padding: "2.5 4",
@@ -126,55 +127,43 @@ export const brand = StyleSheet.create({
   metaBlockVal: {
     flex: 1,
     fontSize: 6,
-    color: C.dark,
     fontFamily: "Helvetica-Bold",
+    color: C.dark,
     padding: "2.5 4",
   },
 });
 
 // ── BrandHeader ──────────────────────────────────────────────────────────────
 
-interface HeaderProps {
-  docType?: string;
-  docTitle?: string;
-}
-
 export function BrandHeader({
   docType = "Configuration Document",
   docTitle = "LED Wall Configuration",
-}: HeaderProps) {
+}: {
+  docType?: string;
+  docTitle?: string;
+}) {
   return (
-    <View style={brand.headerBand}>
-      {/* Logo — text fallback; swap for <Image> once logo-white.png is supplied */}
-      <View style={brand.logoBlock}>
-        <Text style={brand.logoSkyline}>Skyline®</Text>
-        <Text style={brand.logoWhitespace}>whitespace</Text>
+    <>
+      <View style={brand.headerBand}>
+        <View style={brand.logoBlock}>
+          <Text style={brand.logoSkyline}>Skyline®</Text>
+          <Text style={brand.logoWhitespace}>whitespace</Text>
+        </View>
+        <View style={brand.headerRight}>
+          <Text style={brand.headerDocType}>{docType}</Text>
+          <Text style={brand.headerDocTitle}>{docTitle}</Text>
+        </View>
       </View>
-      <View style={brand.headerRight}>
-        <Text style={brand.headerDocType}>{docType}</Text>
-        <Text style={brand.headerDocTitle}>{docTitle}</Text>
-      </View>
-    </View>
+      <View style={brand.headerAccentBar} />
+    </>
   );
 }
 
 // ── BrandFooter ──────────────────────────────────────────────────────────────
 
-interface FooterRow {
-  label: string;
-  value: string;
-}
-
-interface FooterProps {
-  rows: FooterRow[];
-  pageNumber?: number;
-  totalPages?: number;
-}
-
-export function BrandFooter({ rows }: FooterProps) {
+export function BrandFooter({ rows }: { rows: { label: string; value: string }[] }) {
   return (
     <View fixed style={brand.footerStrip}>
-      {/* Left: company address */}
       <View style={{ flex: 1 }}>
         <Text style={brand.footerAddress}>
           Skyline Whitespace  ·  320 Western Road, Wimbledon, London SW19 2QA
@@ -187,26 +176,16 @@ export function BrandFooter({ rows }: FooterProps) {
         </Text>
         <Text
           style={brand.footerPageNum}
-          render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages}`
-          }
+          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
         />
       </View>
-
-      {/* Right: title-block metadata table */}
       <View style={brand.metaBlock}>
-        {rows.map((row, i) => {
-          const isLast = i === rows.length - 1;
-          return (
-            <View
-              key={row.label}
-              style={isLast ? brand.metaBlockRowLast : brand.metaBlockRow}
-            >
-              <Text style={brand.metaBlockKey}>{row.label}</Text>
-              <Text style={brand.metaBlockVal}>{row.value || "—"}</Text>
-            </View>
-          );
-        })}
+        {rows.map((row, i) => (
+          <View key={row.label} style={i === rows.length - 1 ? brand.metaBlockRowLast : brand.metaBlockRow}>
+            <Text style={brand.metaBlockKey}>{row.label}</Text>
+            <Text style={brand.metaBlockVal}>{row.value || "—"}</Text>
+          </View>
+        ))}
       </View>
     </View>
   );

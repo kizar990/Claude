@@ -19,10 +19,7 @@ import type { Overrides } from "../useOverrides";
 import { CONFIG } from "../config";
 import { C, MARGIN_H, FOOTER_H, BrandHeader, BrandFooter } from "./PdfBranding";
 
-// ── Page layout constants ─────────────────────────────────────────────────────
-const CONTENT_PAD_TOP = 22;
-
-// ── Body styles ───────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
@@ -32,10 +29,10 @@ const s = StyleSheet.create({
   },
   body: {
     paddingHorizontal: MARGIN_H,
-    paddingTop: CONTENT_PAD_TOP,
+    paddingTop: 22,
   },
 
-  // ── Project metadata (two columns below header) ──
+  // Project metadata
   metaSection: {
     flexDirection: "row",
     gap: 20,
@@ -59,22 +56,21 @@ const s = StyleSheet.create({
     color: C.dark,
   },
 
-  // ── Section headings ──
+  // Section headings — navy text, orange rule (SW logo accent)
   sectionHead: {
     fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
-    color: C.blue,
+    color: C.navy,
     textTransform: "uppercase",
     letterSpacing: 1,
     marginTop: 16,
     marginBottom: 8,
     paddingBottom: 3,
-    borderBottomWidth: 0.75,
-    borderBottomColor: "#BFDBFE",
+    borderBottomWidth: 1.5,
+    borderBottomColor: C.orange,
   },
 
-  // ── Screen specs data table ──
-  dataTable: { marginBottom: 4 },
+  // Data table
   tableRow: {
     flexDirection: "row",
     paddingVertical: 4.5,
@@ -84,87 +80,62 @@ const s = StyleSheet.create({
   },
   tableRowAlt: { backgroundColor: C.pale },
   tableLabel: { flex: 1, fontSize: 8.5, color: C.mid },
-  tableValue: {
-    flex: 1,
-    fontSize: 8.5,
-    fontFamily: "Helvetica-Bold",
-    color: C.dark,
-    textAlign: "right",
-  },
+  tableValue: { flex: 1, fontSize: 8.5, fontFamily: "Helvetica-Bold", color: C.dark, textAlign: "right" },
 
-  // ── Content spec callout ──
+  // Content spec callout — coral accent (WS logo)
   callout: {
     backgroundColor: C.paleBlu,
     borderLeftWidth: 3,
-    borderLeftColor: C.blue,
+    borderLeftColor: C.coral,
     padding: 10,
     marginBottom: 4,
   },
   calloutEyebrow: {
     fontSize: 6.5,
     fontFamily: "Helvetica-Bold",
-    color: C.blue,
+    color: C.coral,
     textTransform: "uppercase",
     letterSpacing: 0.6,
     marginBottom: 4,
   },
-  calloutMain: {
-    fontSize: 9,
-    fontFamily: "Helvetica-Bold",
-    color: C.dark,
-    marginBottom: 4,
-  },
+  calloutMain: { fontSize: 9, fontFamily: "Helvetica-Bold", color: C.dark, marginBottom: 4 },
   calloutSub: { fontSize: 7.5, color: C.mid, lineHeight: 1.5 },
 
-  // ── Power row ──
+  // Power / material rows
   powerRow: { flexDirection: "row", paddingVertical: 3.5, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: C.rule },
   powerLabel: { flex: 1, fontSize: 8.5, color: C.mid },
   powerValue: { flex: 1, fontSize: 8.5, fontFamily: "Helvetica-Bold", color: C.dark, textAlign: "right" },
-
-  // ── Material list ──
   matRow: { flexDirection: "row", paddingVertical: 3, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: C.rule },
   matLabel: { flex: 3, fontSize: 8, color: C.mid },
   matQty: { flex: 1, fontSize: 8, fontFamily: "Helvetica-Bold", color: C.dark, textAlign: "right" },
 
-  // ── Grid layout ──
-  gridWrapper: { marginTop: 4 },
-  dimLabel: { fontSize: 7, color: C.red, fontFamily: "Helvetica-Bold" },
+  // Layout page (page 2)
+  layoutBody: {
+    paddingHorizontal: MARGIN_H,
+    paddingTop: 28,
+    flex: 1,
+  },
+  dimLabel: { fontSize: 9, color: C.orange, fontFamily: "Helvetica-Bold" },
   dimRow: { flexDirection: "row", alignItems: "center" },
+  gridCaption: { fontSize: 7.5, color: C.muted, marginTop: 8 },
 });
 
-// ── Panel grid with dimension callouts ───────────────────────────────────────
-
+// ── Panel grid SVG (cells + dimension lines) ──────────────────────────────────
 function PanelGridSvg({
-  columns,
-  rows,
-  blankCells,
-  chains,
-  showChains,
+  columns, rows, blankCells, chains, showChains, large = false,
 }: {
-  columns: number;
-  rows: number;
-  blankCells: number[];
-  chains: ChainData[];
-  showChains: boolean;
+  columns: number; rows: number; blankCells: number[];
+  chains: ChainData[]; showChains: boolean; large?: boolean;
 }) {
-  const AVAIL_W = 460;
-  const AVAIL_H = 230;
-  const MAX_CELL = 38;
+  const AVAIL_W = large ? 490 : 460;
+  const AVAIL_H = large ? 380 : 220;
+  const MAX_CELL = large ? 52 : 38;
 
-  const cellSize = Math.min(
-    Math.floor(AVAIL_W / columns),
-    Math.floor(AVAIL_H / rows),
-    MAX_CELL
-  );
-
+  const cellSize = Math.min(Math.floor(AVAIL_W / columns), Math.floor(AVAIL_H / rows), MAX_CELL);
   const gridW = columns * cellSize;
   const gridH = rows * cellSize;
-
-  // Dimension line geometry — sits inside the SVG
-  const DIM_ABOVE = 18;  // space above grid for horizontal dim line
-  const DIM_GAP   = 10;  // gap between grid right edge and vertical dim line
-  const SVG_W     = gridW + DIM_GAP + 4;
-  const SVG_H     = gridH + DIM_ABOVE;
+  const DIM_ABOVE = 18;
+  const DIM_GAP = 10;
 
   const panelChain = new Map<number, { color: string }>();
   if (showChains) {
@@ -182,10 +153,8 @@ function PanelGridSvg({
       cells.push(
         <G key={idx}>
           <Rect
-            x={c * cellSize}
-            y={DIM_ABOVE + r * cellSize}
-            width={cellSize}
-            height={cellSize}
+            x={c * cellSize} y={DIM_ABOVE + r * cellSize}
+            width={cellSize} height={cellSize}
             fill={isBlank ? "#94a3b8" : ci ? ci.color + "33" : "#EDF2F7"}
             stroke={isBlank ? "#64748b" : ci ? ci.color : "#A0AEC0"}
             strokeWidth={0.5}
@@ -201,134 +170,95 @@ function PanelGridSvg({
       chain.panels.slice(0, -1).forEach((from, i) => {
         const to = chain.panels[i + 1];
         chainLines.push(
-          <Line
-            key={`${chain.id}-${i}`}
+          <Line key={`${chain.id}-${i}`}
             x1={(from % columns) * cellSize + cellSize / 2}
             y1={DIM_ABOVE + Math.floor(from / columns) * cellSize + cellSize / 2}
             x2={(to % columns) * cellSize + cellSize / 2}
             y2={DIM_ABOVE + Math.floor(to / columns) * cellSize + cellSize / 2}
-            stroke={chain.color}
-            strokeWidth={1}
-            strokeOpacity={0.8}
+            stroke={chain.color} strokeWidth={1} strokeOpacity={0.8}
           />
         );
       });
     });
   }
 
-  // Horizontal dim line (top) — width dimension
   const hY = 9;
-  // Vertical dim line (right) — height dimension
   const vX = gridW + DIM_GAP;
 
   return (
-    <Svg width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}>
-      {/* Cells + chain lines */}
+    <Svg width={gridW + DIM_GAP + 4} height={gridH + DIM_ABOVE}
+      viewBox={`0 0 ${gridW + DIM_GAP + 4} ${gridH + DIM_ABOVE}`}>
       {cells}
       {chainLines}
-
-      {/* Horizontal dimension line */}
-      <Line x1={0} y1={hY} x2={gridW} y2={hY} stroke={C.red} strokeWidth={0.8} />
-      <Line x1={0} y1={hY - 4} x2={0} y2={hY + 4} stroke={C.red} strokeWidth={0.8} />
-      <Line x1={gridW} y1={hY - 4} x2={gridW} y2={hY + 4} stroke={C.red} strokeWidth={0.8} />
-
-      {/* Vertical dimension line */}
-      <Line x1={vX} y1={DIM_ABOVE} x2={vX} y2={DIM_ABOVE + gridH} stroke={C.red} strokeWidth={0.8} />
-      <Line x1={vX - 4} y1={DIM_ABOVE} x2={vX + 4} y2={DIM_ABOVE} stroke={C.red} strokeWidth={0.8} />
-      <Line x1={vX - 4} y1={DIM_ABOVE + gridH} x2={vX + 4} y2={DIM_ABOVE + gridH} stroke={C.red} strokeWidth={0.8} />
+      {/* Width dimension line */}
+      <Line x1={0} y1={hY} x2={gridW} y2={hY} stroke={C.orange} strokeWidth={0.9} />
+      <Line x1={0} y1={hY - 5} x2={0} y2={hY + 5} stroke={C.orange} strokeWidth={0.9} />
+      <Line x1={gridW} y1={hY - 5} x2={gridW} y2={hY + 5} stroke={C.orange} strokeWidth={0.9} />
+      {/* Height dimension line */}
+      <Line x1={vX} y1={DIM_ABOVE} x2={vX} y2={DIM_ABOVE + gridH} stroke={C.orange} strokeWidth={0.9} />
+      <Line x1={vX - 5} y1={DIM_ABOVE} x2={vX + 5} y2={DIM_ABOVE} stroke={C.orange} strokeWidth={0.9} />
+      <Line x1={vX - 5} y1={DIM_ABOVE + gridH} x2={vX + 5} y2={DIM_ABOVE + gridH} stroke={C.orange} strokeWidth={0.9} />
     </Svg>
   );
 }
 
-// Wrapper that adds text labels outside the SVG (more reliable than SVG <Text>)
 function PanelGridWithLabels({
-  columns,
-  rows,
-  blankCells,
-  chains,
-  showChains,
-  widthM,
-  heightM,
+  columns, rows, blankCells, chains, showChains, widthM, heightM, large = false,
 }: {
-  columns: number;
-  rows: number;
-  blankCells: number[];
-  chains: ChainData[];
-  showChains: boolean;
-  widthM: number;
-  heightM: number;
+  columns: number; rows: number; blankCells: number[]; chains: ChainData[];
+  showChains: boolean; widthM: number; heightM: number; large?: boolean;
 }) {
-  const AVAIL_W = 460;
-  const AVAIL_H = 230;
-  const MAX_CELL = 38;
+  const AVAIL_W = large ? 490 : 460;
+  const AVAIL_H = large ? 380 : 220;
+  const MAX_CELL = large ? 52 : 38;
   const cellSize = Math.min(Math.floor(AVAIL_W / columns), Math.floor(AVAIL_H / rows), MAX_CELL);
   const gridW = columns * cellSize;
 
   return (
-    <View style={s.gridWrapper}>
-      {/* Width label centred above the grid */}
-      <View style={{ width: gridW, alignItems: "center", marginBottom: 2 }}>
-        <Text style={s.dimLabel}>← {widthM.toFixed(3)} m →</Text>
-      </View>
-
-      {/* Grid SVG + height label to the right */}
-      <View style={s.dimRow}>
+    <View style={s.dimRow}>
+      <View>
+        {/* Width label above */}
+        <View style={{ width: gridW, alignItems: "center", marginBottom: 3 }}>
+          <Text style={s.dimLabel}>← {widthM.toFixed(3)} m →</Text>
+        </View>
         <PanelGridSvg
-          columns={columns}
-          rows={rows}
-          blankCells={blankCells}
-          chains={chains}
-          showChains={showChains}
+          columns={columns} rows={rows} blankCells={blankCells}
+          chains={chains} showChains={showChains} large={large}
         />
-        <Text style={[s.dimLabel, { marginLeft: 6 }]}>
-          {heightM.toFixed(3)} m
-        </Text>
       </View>
-
-      {/* Panel count caption */}
-      <Text style={{ fontSize: 7, color: C.muted, marginTop: 4 }}>
-        {columns} × {rows} panels  ·  each {CONFIG.PANEL_WIDTH_MM} × {CONFIG.PANEL_HEIGHT_MM} mm  ·  {CONFIG.PIXEL_PITCH}
-      </Text>
+      {/* Height label to the right */}
+      <Text style={[s.dimLabel, { marginLeft: 8 }]}>{heightM.toFixed(3)} m</Text>
     </View>
   );
 }
 
 // ── Field picker config ───────────────────────────────────────────────────────
 export interface PdfFields {
-  projectInfo: boolean;
-  screenSpecs: boolean;
-  contentSpec: boolean;
+  projectInfo:       boolean;
+  screenSpecs:       boolean;
+  contentSpec:       boolean;
   powerRequirements: boolean;
-  materialList: boolean;
-  visualRender: boolean;
-  chainOverlay: boolean;
+  materialList:      boolean;
+  visualRender:      boolean;
+  chainOverlay:      boolean;
 }
 
 const DEFAULT_FIELDS: PdfFields = {
-  projectInfo:      true,
-  screenSpecs:      true,
-  contentSpec:      true,
+  projectInfo:       true,
+  screenSpecs:       true,
+  contentSpec:       true,
   powerRequirements: false,
-  materialList:     false,
-  visualRender:     true,
-  chainOverlay:     false,
+  materialList:      false,
+  visualRender:      true,
+  chainOverlay:      false,
 };
 
 // ── PDF Document ──────────────────────────────────────────────────────────────
 export function ClientPdfDocument({
-  meta,
-  calc,
-  overrides,
-  blankCells,
-  chains,
-  fields,
+  meta, calc, overrides, blankCells, chains, fields,
 }: {
-  meta: ProjectMeta;
-  calc: FullConfig;
-  overrides: Overrides;
-  blankCells: number[];
-  chains: ChainData[];
-  fields: PdfFields;
+  meta: ProjectMeta; calc: FullConfig; overrides: Overrides;
+  blankCells: number[]; chains: ChainData[]; fields: PdfFields;
 }) {
   const { dimensions, materials, power, processor } = calc;
   const r = <T extends string | number>(key: string, auto: T) =>
@@ -336,30 +266,27 @@ export function ClientPdfDocument({
 
   const columns = Math.round(dimensions.pixelsW / CONFIG.PANEL_PIXELS_W);
   const rows    = Math.round(dimensions.pixelsH / CONFIG.PANEL_PIXELS_H);
-
-  const today = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
+  const today   = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
   const specRows: [string, string][] = [
-    ["Width",        `${Number(r("widthM",  dimensions.widthM)).toFixed(3)} m`],
-    ["Height",       `${Number(r("heightM", dimensions.heightM)).toFixed(3)} m`],
-    ["Aspect ratio", String(r("aspectRatio", dimensions.aspectRatio))],
-    ["Resolution",   `${r("pixelsW", dimensions.pixelsW)} × ${r("pixelsH", dimensions.pixelsH)} px`],
-    ["Total panels", String(r("totalPanels", dimensions.activePanels))],
-    ["Total weight", `${Math.round(Number(r("totalWeight", dimensions.activePanels * 10)))} kg`],
-    ["Pixel pitch",  CONFIG.PIXEL_PITCH],
-    ["Processor",    processor.modelName],
+    ["Width",         `${Number(r("widthM",  dimensions.widthM)).toFixed(3)} m`],
+    ["Height",        `${Number(r("heightM", dimensions.heightM)).toFixed(3)} m`],
+    ["Aspect ratio",  String(r("aspectRatio", dimensions.aspectRatio))],
+    ["Resolution",    `${r("pixelsW", dimensions.pixelsW)} × ${r("pixelsH", dimensions.pixelsH)} px`],
+    ["Total panels",  String(r("totalPanels", dimensions.activePanels))],
+    ["Total weight",  `${Math.round(Number(r("totalWeight", dimensions.activePanels * 10)))} kg`],
+    ["Pixel pitch",   CONFIG.PIXEL_PITCH],
+    ["Processor",     processor.modelName],
   ];
 
   const footerRows = [
-    { label: "Client",        value: meta.client },
-    { label: "Project Name",  value: meta.name },
-    { label: "Job Number",    value: meta.jobNumber },
-    { label: "Document",      value: "LED Wall Configuration" },
-    { label: "Generated By",  value: "Skyline Whitespace" },
-    { label: "Date",          value: meta.date || today },
-    { label: "Version",       value: "1.0" },
+    { label: "Client",       value: meta.client },
+    { label: "Project Name", value: meta.name },
+    { label: "Job Number",   value: meta.jobNumber },
+    { label: "Document",     value: "LED Wall Configuration" },
+    { label: "Generated By", value: "Skyline Whitespace" },
+    { label: "Date",         value: meta.date || today },
+    { label: "Version",      value: "1.0" },
   ];
 
   return (
@@ -368,59 +295,47 @@ export function ClientPdfDocument({
       author="Skyline Whitespace"
       creator="Skyline LED Wall Configurator"
     >
+      {/* ── PAGE 1: Text content ── */}
       <Page size="A4" style={s.page}>
-        {/* ── Header band ── */}
-        <BrandHeader
-          docType="LED Wall"
-          docTitle={meta.name || "LED Wall Configuration"}
-        />
+        <BrandHeader docType="LED Wall" docTitle={meta.name || "LED Wall Configuration"} />
 
         <View style={s.body}>
-          {/* ── Project metadata ── */}
+          {/* Project metadata */}
           {fields.projectInfo && (
             <View style={s.metaSection}>
               <View style={s.metaCol}>
-                {([
-                  ["Client",  meta.client],
-                  ["Venue",   meta.venue],
-                  ["Contact", meta.contact],
-                ] as [string, string][]).map(([label, value]) => (
-                  <View key={label} style={s.metaItem}>
-                    <Text style={s.metaLabel}>{label}</Text>
-                    <Text style={s.metaValue}>{value || "—"}</Text>
-                  </View>
-                ))}
+                {([ ["Client", meta.client], ["Venue", meta.venue], ["Contact", meta.contact] ] as [string,string][])
+                  .map(([label, value]) => (
+                    <View key={label} style={s.metaItem}>
+                      <Text style={s.metaLabel}>{label}</Text>
+                      <Text style={s.metaValue}>{value || "—"}</Text>
+                    </View>
+                  ))}
               </View>
               <View style={s.metaCol}>
-                {([
-                  ["Project Name", meta.name],
-                  ["Job Number",   meta.jobNumber],
-                  ["Date",         meta.date],
-                ] as [string, string][]).map(([label, value]) => (
-                  <View key={label} style={s.metaItem}>
-                    <Text style={s.metaLabel}>{label}</Text>
-                    <Text style={s.metaValue}>{value || "—"}</Text>
-                  </View>
-                ))}
+                {([ ["Project Name", meta.name], ["Job Number", meta.jobNumber], ["Date", meta.date] ] as [string,string][])
+                  .map(([label, value]) => (
+                    <View key={label} style={s.metaItem}>
+                      <Text style={s.metaLabel}>{label}</Text>
+                      <Text style={s.metaValue}>{value || "—"}</Text>
+                    </View>
+                  ))}
               </View>
             </View>
           )}
 
-          {/* ── Screen Specifications ── */}
+          {/* Screen Specifications */}
           {fields.screenSpecs && (
             <>
               <Text style={s.sectionHead}>Screen Specifications</Text>
               {processor.needsUpgrade && (
-                <View style={{ backgroundColor: "#FFF5F5", borderLeftWidth: 3, borderLeftColor: C.red, padding: 8, marginBottom: 8 }}>
-                  <Text style={{ fontSize: 8, color: "#C53030" }}>{processor.warning}</Text>
+                <View style={{ backgroundColor: "#FFF5F5", borderLeftWidth: 3, borderLeftColor: C.orange, padding: 8, marginBottom: 8 }}>
+                  <Text style={{ fontSize: 8, color: C.orange }}>{processor.warning}</Text>
                 </View>
               )}
-              <View style={s.dataTable}>
+              <View>
                 {specRows.map(([label, value], i) => (
-                  <View
-                    key={label}
-                    style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}
-                  >
+                  <View key={label} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
                     <Text style={s.tableLabel}>{label}</Text>
                     <Text style={s.tableValue}>{value}</Text>
                   </View>
@@ -429,7 +344,7 @@ export function ClientPdfDocument({
             </>
           )}
 
-          {/* ── Content Specification ── */}
+          {/* Content Specification */}
           {fields.contentSpec && (
             <>
               <Text style={s.sectionHead}>Content Specification</Text>
@@ -443,17 +358,16 @@ export function ClientPdfDocument({
             </>
           )}
 
-          {/* ── Power Requirements ── */}
+          {/* Power Requirements */}
           {fields.powerRequirements && (
             <>
               <Text style={s.sectionHead}>Power Requirements</Text>
-              {([
-                ["Total power draw",    `${Math.round(Number(r("pow_totalWatts", power.totalWatts)))} W`],
-                ["Current at 240 V",   `${Number(r("pow_amps", power.amps)).toFixed(2)} A`],
-                ["13A circuits",        String(r("pow_shukoCircuits", power.circuits))],
-                ["Data lines",         String(r("pow_dataLines", power.dataLines))],
-                ["Data links (UTP)",   String(r("pow_utpData", power.utpDataCables))],
-              ] as [string, string][]).map(([label, value], i) => (
+              {([ ["Total power draw", `${Math.round(Number(r("pow_totalWatts", power.totalWatts)))} W`],
+                  ["Current at 240 V", `${Number(r("pow_amps", power.amps)).toFixed(2)} A`],
+                  ["13A circuits",      String(r("pow_shukoCircuits", power.circuits))],
+                  ["Data lines",       String(r("pow_dataLines", power.dataLines))],
+                  ["Data links (UTP)", String(r("pow_utpData", power.utpDataCables))],
+              ] as [string,string][]).map(([label, value], i) => (
                 <View key={label} style={[s.powerRow, i % 2 === 1 ? { backgroundColor: C.pale } : {}]}>
                   <Text style={s.powerLabel}>{label}</Text>
                   <Text style={s.powerValue}>{value}</Text>
@@ -462,28 +376,27 @@ export function ClientPdfDocument({
             </>
           )}
 
-          {/* ── Material List ── */}
+          {/* Material List */}
           {fields.materialList && (
             <>
               <Text style={s.sectionHead}>Material List</Text>
-              {([
-                ["LED Flightcases",        r("mat_ledFlightcases",  materials.ledFlightcases)],
-                ["LED Panels",             r("mat_ledPanels",       materials.ledPanels)],
-                ["Powerlink 1m",           r("mat_powerlink1m",     materials.powerlink1m)],
-                ["Datalink 1m",            r("mat_datalink1m",      materials.datalink1m)],
-                ["Powerstart 10m",         r("mat_powerstart10m",   materials.powerstart10m)],
-                ["Powerstart 1m",          r("mat_powerstart1m",    materials.powerstart1m)],
-                ["Datastart KIT",          r("mat_datastartKit",    materials.datastartKit)],
-                ["E-tape rolls",           r("mat_etapeRolls",      materials.etapeRolls)],
-                ["FIT KIT",                r("mat_fitKit",          materials.fitKit)],
-                ["Neutrik Couplers",       r("mat_neutrikCouplers", materials.neutrikCouplers)],
-                ["PROC Flightcase",        r("mat_procFlightcase",  materials.procFlightcase)],
-                ["LED Spares",             r("mat_ledSpares",       materials.ledSpares)],
-                ["Processor",             r("mat_processor",       materials.processor)],
-                ["PWR/HDMI/USB-A/UTP",     r("mat_powerHdmiUsbUtp",materials.powerHdmiUsbUtp)],
-                ["Mediaplayer",            r("mat_mediaplayer",     materials.mediaplayer)],
-                ["PWR/HDMI/USB stick",     r("mat_powerHdmiUsbStick",materials.powerHdmiUsbStick)],
-              ] as [string, string | number][]).map(([label, qty], i) => (
+              {([ ["LED Flightcases",    r("mat_ledFlightcases",   materials.ledFlightcases)],
+                  ["LED Panels",         r("mat_ledPanels",        materials.ledPanels)],
+                  ["Powerlink 1m",       r("mat_powerlink1m",      materials.powerlink1m)],
+                  ["Datalink 1m",        r("mat_datalink1m",       materials.datalink1m)],
+                  ["Powerstart 10m",     r("mat_powerstart10m",    materials.powerstart10m)],
+                  ["Powerstart 1m",      r("mat_powerstart1m",     materials.powerstart1m)],
+                  ["Datastart KIT",      r("mat_datastartKit",     materials.datastartKit)],
+                  ["E-tape rolls",       r("mat_etapeRolls",       materials.etapeRolls)],
+                  ["FIT KIT",            r("mat_fitKit",           materials.fitKit)],
+                  ["Neutrik Couplers",   r("mat_neutrikCouplers",  materials.neutrikCouplers)],
+                  ["PROC Flightcase",    r("mat_procFlightcase",   materials.procFlightcase)],
+                  ["LED Spares",         r("mat_ledSpares",        materials.ledSpares)],
+                  ["Processor",          r("mat_processor",        materials.processor)],
+                  ["PWR/HDMI/USB-A/UTP", r("mat_powerHdmiUsbUtp", materials.powerHdmiUsbUtp)],
+                  ["Mediaplayer",        r("mat_mediaplayer",      materials.mediaplayer)],
+                  ["PWR/HDMI/USB stick", r("mat_powerHdmiUsbStick",materials.powerHdmiUsbStick)],
+              ] as [string, string|number][]).map(([label, qty], i) => (
                 <View key={String(label)} style={[s.matRow, i % 2 === 1 ? { backgroundColor: C.pale } : {}]}>
                   <Text style={s.matLabel}>{label}</Text>
                   <Text style={s.matQty}>{qty}</Text>
@@ -491,68 +404,59 @@ export function ClientPdfDocument({
               ))}
             </>
           )}
-
-          {/* ── Screen Layout ── */}
-          {fields.visualRender && (
-            <>
-              <Text style={s.sectionHead}>Screen Layout</Text>
-              <PanelGridWithLabels
-                columns={columns}
-                rows={rows}
-                blankCells={blankCells}
-                chains={chains}
-                showChains={fields.chainOverlay}
-                widthM={Number(r("widthM", dimensions.widthM))}
-                heightM={Number(r("heightM", dimensions.heightM))}
-              />
-            </>
-          )}
         </View>
 
-        {/* ── Footer (fixed, every page) ── */}
         <BrandFooter rows={footerRows} />
       </Page>
+
+      {/* ── PAGE 2: Screen layout diagram ── */}
+      {fields.visualRender && (
+        <Page size="A4" style={s.page}>
+          <BrandHeader docType="LED Wall" docTitle={meta.name || "LED Wall Configuration"} />
+
+          <View style={s.layoutBody}>
+            <Text style={s.sectionHead}>Screen Layout</Text>
+            <PanelGridWithLabels
+              columns={columns}
+              rows={rows}
+              blankCells={blankCells}
+              chains={chains}
+              showChains={fields.chainOverlay}
+              widthM={Number(r("widthM", dimensions.widthM))}
+              heightM={Number(r("heightM", dimensions.heightM))}
+              large
+            />
+            <Text style={s.gridCaption}>
+              {columns} × {rows} panels  ·  {CONFIG.PANEL_WIDTH_MM} × {CONFIG.PANEL_HEIGHT_MM} mm per panel  ·  {CONFIG.PIXEL_PITCH}  ·  {dimensions.activePanels} panels total
+            </Text>
+          </View>
+
+          <BrandFooter rows={footerRows} />
+        </Page>
+      )}
     </Document>
   );
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 interface ModalProps {
-  meta: ProjectMeta;
-  calc: FullConfig;
-  overrides: Overrides;
-  blankCells: number[];
-  chains: ChainData[];
-  companyName: string;
-  onClose: () => void;
+  meta: ProjectMeta; calc: FullConfig; overrides: Overrides;
+  blankCells: number[]; chains: ChainData[];
+  companyName: string; onClose: () => void;
 }
 
-export function ClientPdfModal({
-  meta,
-  calc,
-  overrides,
-  blankCells,
-  chains,
-  onClose,
-}: ModalProps) {
+export function ClientPdfModal({ meta, calc, overrides, blankCells, chains, onClose }: ModalProps) {
   const [fields, setFields] = useState<PdfFields>(DEFAULT_FIELDS);
   const [generating, setGenerating] = useState(false);
 
-  const toggle = (key: keyof PdfFields) =>
-    setFields((f) => ({ ...f, [key]: !f[key] }));
+  const toggle = (key: keyof PdfFields) => setFields((f) => ({ ...f, [key]: !f[key] }));
 
   const handleExport = useCallback(async () => {
     setGenerating(true);
     try {
       const blob = await pdf(
-        <ClientPdfDocument
-          meta={meta}
-          calc={calc}
-          overrides={overrides}
-          blankCells={blankCells}
-          chains={chains}
-          fields={fields}
-        />
+        <ClientPdfDocument meta={meta} calc={calc} overrides={overrides}
+          blankCells={blankCells} chains={chains} fields={fields} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -571,7 +475,7 @@ export function ClientPdfModal({
     { key: "contentSpec",       label: "Content specification" },
     { key: "powerRequirements", label: "Power requirements", note: "Sensitive — off by default" },
     { key: "materialList",      label: "Material list" },
-    { key: "visualRender",      label: "Screen layout diagram" },
+    { key: "visualRender",      label: "Screen layout diagram (page 2)" },
     { key: "chainOverlay",      label: "Include daisy chain overlay" },
   ];
 
@@ -587,38 +491,25 @@ export function ClientPdfModal({
             <X size={18} />
           </button>
         </div>
-
         <div className="p-5 space-y-2">
           {sections.map(({ key, label, note }) => (
             <label key={key} className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={fields[key]}
-                onChange={() => toggle(key)}
-                className="mt-0.5 rounded border-gray-300 text-blue-600"
-              />
+              <input type="checkbox" checked={fields[key]} onChange={() => toggle(key)}
+                className="mt-0.5 rounded border-gray-300 text-blue-600" />
               <div>
                 <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
-                {note && (
-                  <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">{note}</span>
-                )}
+                {note && <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">{note}</span>}
               </div>
             </label>
           ))}
         </div>
-
         <div className="px-5 pb-5 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="text-sm px-4 py-2 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
-          >
+          <button onClick={onClose}
+            className="text-sm px-4 py-2 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
             Cancel
           </button>
-          <button
-            onClick={handleExport}
-            disabled={generating}
-            className="flex items-center gap-2 text-sm px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
-          >
+          <button onClick={handleExport} disabled={generating}
+            className="flex items-center gap-2 text-sm px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60">
             <FileDown size={15} />
             {generating ? "Generating…" : "Download PDF"}
           </button>
