@@ -27,6 +27,10 @@ export interface SavedProject {
   blankCells: number[];
   chains: ChainData[];
   processorId?: string;
+  routingMode?: "layout" | "data" | "power";
+  dataPortSequences?: Record<string, number[]>;  // port num as string key → ordered panel flat-indices
+  powerChainSequences?: Record<string, number[]>;
+  powerMaxWatts?: number;
 }
 
 export interface ChainData {

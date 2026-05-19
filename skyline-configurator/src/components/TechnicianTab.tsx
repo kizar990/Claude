@@ -2,11 +2,11 @@ import { useState } from "react";
 import { RotateCcw, Plus, Trash2 } from "lucide-react";
 import { EditableField } from "./EditableField";
 import { ProcessorBadge } from "./ProcessorBadge";
-import { ScreenLayoutDiagram } from "./ScreenLayoutDiagram";
+import { CableRoutingGrid } from "./CableRoutingGrid";
 import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
-import { PROCESSORS, CONFIG } from "../config";
+import { PROCESSORS, CONFIG, computePanelsPerPort } from "../config";
 
 interface CustomLine {
   id: string;
@@ -19,12 +19,36 @@ interface Props {
   overrideState: OverrideState;
   processorId: string;
   onProcessorChange: (id: string) => void;
+  routingMode: "layout" | "data" | "power";
+  dataPortSequences: Record<string, number[]>;
+  powerChainSequences: Record<string, number[]>;
+  powerMaxWatts: number;
+  onRoutingModeChange: (m: "layout" | "data" | "power") => void;
+  onDataPortSequencesChange: (s: Record<string, number[]>) => void;
+  onPowerChainSequencesChange: (s: Record<string, number[]>) => void;
+  onPowerMaxWattsChange: (w: number) => void;
 }
 
-export function TechnicianTab({ calc, overrideState, processorId, onProcessorChange }: Props) {
+export function TechnicianTab({
+  calc,
+  overrideState,
+  processorId,
+  onProcessorChange,
+  routingMode,
+  dataPortSequences,
+  powerChainSequences,
+  powerMaxWatts,
+  onRoutingModeChange,
+  onDataPortSequencesChange,
+  onPowerChainSequencesChange,
+  onPowerMaxWattsChange,
+}: Props) {
   const { dimensions, materials, power, processor } = calc;
   const { overrides, resetAll } = overrideState;
   const anyOverride = Object.keys(overrides).length > 0;
+
+  const selectedProcessor = PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0];
+  const panelsPerPort = computePanelsPerPort(selectedProcessor.pixelsPerPort, CONFIG.PANEL_PIXELS_W, CONFIG.PANEL_PIXELS_H);
 
   const [customLines, setCustomLines] = useState<CustomLine[]>([]);
 
@@ -72,7 +96,7 @@ export function TechnicianTab({ calc, overrideState, processorId, onProcessorCha
           <TechStat label="Columns × Rows">
             <span className="font-mono text-sm">
               {dimensions.activePanels > 0
-                ? `${Math.round(resolve("pixelsW", dimensions.pixelsW, overrides) as number / 192)} × ${Math.round(resolve("pixelsH", dimensions.pixelsH, overrides) as number / 192)}`
+                ? `${Math.round(resolve("pixelsW", dimensions.pixelsW, overrides) as number / CONFIG.PANEL_PIXELS_W)} × ${Math.round(resolve("pixelsH", dimensions.pixelsH, overrides) as number / CONFIG.PANEL_PIXELS_H)}`
                 : "—"}
             </span>
           </TechStat>
@@ -112,12 +136,12 @@ export function TechnicianTab({ calc, overrideState, processorId, onProcessorCha
         </div>
       </section>
 
-      {/* Screen layout */}
+      {/* Screen layout / cable routing */}
       {dimensions.activePanels > 0 && (
         <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
           <SectionHeader title="Screen Layout" />
           <div className="px-6 py-5">
-            <ScreenLayoutDiagram
+            <CableRoutingGrid
               columns={Math.round(dimensions.pixelsW / CONFIG.PANEL_PIXELS_W)}
               rows={Math.round(dimensions.pixelsH / CONFIG.PANEL_PIXELS_H)}
               widthM={dimensions.widthM}
@@ -126,6 +150,17 @@ export function TechnicianTab({ calc, overrideState, processorId, onProcessorCha
               panelHeightMm={CONFIG.PANEL_HEIGHT_MM}
               pixelPitch={CONFIG.PIXEL_PITCH}
               activePanels={dimensions.activePanels}
+              numPorts={selectedProcessor.ports}
+              panelsPerPort={panelsPerPort}
+              panelPowerW={CONFIG.PANEL_POWER_W}
+              routingMode={routingMode}
+              dataPortSequences={dataPortSequences}
+              powerChainSequences={powerChainSequences}
+              powerMaxWatts={powerMaxWatts}
+              onModeChange={onRoutingModeChange}
+              onDataPortSequencesChange={onDataPortSequencesChange}
+              onPowerChainSequencesChange={onPowerChainSequencesChange}
+              onPowerMaxWattsChange={onPowerMaxWattsChange}
             />
           </div>
         </section>

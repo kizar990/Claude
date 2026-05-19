@@ -50,6 +50,10 @@ export default function App() {
   const [chains, setChains] = useState<ChainData[]>([]);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [processorId, setProcessorId] = useState<string>(PROCESSORS[0].id);
+  const [routingMode, setRoutingMode] = useState<"layout" | "data" | "power">("layout");
+  const [dataPortSequences, setDataPortSequences] = useState<Record<string, number[]>>({});
+  const [powerChainSequences, setPowerChainSequences] = useState<Record<string, number[]>>({});
+  const [powerMaxWatts, setPowerMaxWatts] = useState(2400);
 
   const overrideState = useOverrides();
 
@@ -76,6 +80,10 @@ export default function App() {
       blankCells,
       chains,
       processorId,
+      routingMode,
+      dataPortSequences,
+      powerChainSequences,
+      powerMaxWatts,
     };
     saveProject(project);
     setProjects(listProjects());
@@ -90,6 +98,10 @@ export default function App() {
     setBlankCells(p.blankCells ?? []);
     setChains(p.chains ?? []);
     setProcessorId(p.processorId ?? PROCESSORS[0].id);
+    setRoutingMode(p.routingMode ?? "layout");
+    setDataPortSequences(p.dataPortSequences ?? {});
+    setPowerChainSequences(p.powerChainSequences ?? {});
+    setPowerMaxWatts(p.powerMaxWatts ?? 2400);
     overrideState.resetAll();
     setTimeout(() => {
       Object.entries(p.overrides).forEach(([k, v]) => overrideState.set(k, v));
@@ -244,6 +256,14 @@ export default function App() {
               overrideState={overrideState}
               processorId={processorId}
               onProcessorChange={setProcessorId}
+              routingMode={routingMode}
+              dataPortSequences={dataPortSequences}
+              powerChainSequences={powerChainSequences}
+              powerMaxWatts={powerMaxWatts}
+              onRoutingModeChange={setRoutingMode}
+              onDataPortSequencesChange={setDataPortSequences}
+              onPowerChainSequencesChange={setPowerChainSequences}
+              onPowerMaxWattsChange={setPowerMaxWatts}
             />
           )}
 

@@ -1,8 +1,8 @@
 export const CONFIG = {
   PANEL_WIDTH_MM: 496,
   PANEL_HEIGHT_MM: 496,
-  PANEL_PIXELS_W: 192,
-  PANEL_PIXELS_H: 192,
+  PANEL_PIXELS_W: 256,
+  PANEL_PIXELS_H: 256,
   PIXEL_PITCH: "P1.9",
   PANEL_WEIGHT_KG: 10,
   PANEL_POWER_W: 120,
@@ -30,6 +30,10 @@ export const CONFIG = {
 
 export type Config = typeof CONFIG;
 
+export function computePanelsPerPort(pixelsPerPort: number, pw: number, ph: number): number {
+  return Math.floor(pixelsPerPort / (pw * ph));
+}
+
 export interface ProcessorModel {
   id: string;
   name: string;
@@ -38,8 +42,8 @@ export interface ProcessorModel {
   maxTotalPixels: number;
   // Port topology — used for panel-load sufficiency check
   ports: number;
-  // Maximum panels per port at comfortable operating load (practical wiring limit)
-  panelsPerPort: number;
+  // Maximum pixels per port (used to compute panelsPerPort dynamically)
+  pixelsPerPort: number;
   specsConfirmed: boolean;
 }
 
@@ -48,20 +52,20 @@ export const PROCESSORS: ProcessorModel[] = [
     id: "mctrl660",
     name: "MCTRL660",
     maxPixelsW: 1920,
-    maxPixelsH: 1200,
+    maxPixelsH: 1536,
     maxTotalPixels: 2_300_000,
     ports: 4,
-    panelsPerPort: 8,
+    pixelsPerPort: 650000,
     specsConfirmed: true,
   },
   {
     id: "mctrl660pro",
     name: "MCTRL660 Pro",
     maxPixelsW: 1920,
-    maxPixelsH: 1200,
+    maxPixelsH: 1536,
     maxTotalPixels: 2_300_000,
     ports: 6,
-    panelsPerPort: 8,
+    pixelsPerPort: 650000,
     specsConfirmed: true,
   },
   {
@@ -71,7 +75,7 @@ export const PROCESSORS: ProcessorModel[] = [
     maxPixelsH: 2160,
     maxTotalPixels: 3_900_000,
     ports: 6,
-    panelsPerPort: 10,
+    pixelsPerPort: 650000,
     specsConfirmed: false,
   },
   {
@@ -81,7 +85,7 @@ export const PROCESSORS: ProcessorModel[] = [
     maxPixelsH: 2160,
     maxTotalPixels: 6_500_000,
     ports: 10,
-    panelsPerPort: 10,
+    pixelsPerPort: 650000,
     specsConfirmed: false,
   },
   {
@@ -91,7 +95,7 @@ export const PROCESSORS: ProcessorModel[] = [
     maxPixelsH: 2160,
     maxTotalPixels: 13_000_000,
     ports: 20,
-    panelsPerPort: 10,
+    pixelsPerPort: 650000,
     specsConfirmed: false,
   },
   {
@@ -101,7 +105,7 @@ export const PROCESSORS: ProcessorModel[] = [
     maxPixelsH: 2160,
     maxTotalPixels: 8_800_000,
     ports: 10,
-    panelsPerPort: 10,
+    pixelsPerPort: 650000,
     specsConfirmed: false,
   },
 ];

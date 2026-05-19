@@ -97,6 +97,10 @@ export function ScreenLayoutDiagram({
         strokeWidth={1}
       />
 
+      {/* ── Front view label ──────────────────────────── */}
+      <text x={gx+6} y={gy+14} fontSize={8} fontFamily="system-ui,sans-serif"
+            fill="#94A3B8" letterSpacing={0.5}>FRONT VIEW</text>
+
       {/* ── Width callout ─────────────────────────────── */}
       {/* Left tick */}
       <line x1={gx} y1={widthLineY - TICK_HALF} x2={gx} y2={widthLineY + TICK_HALF}

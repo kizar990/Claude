@@ -34,8 +34,8 @@ describe("calcDimensions — 7×3 at 496mm panels", () => {
   });
 
   it("pixel resolution unchanged (depends on pixel count, not panel size)", () => {
-    expect(d.pixelsW).toBe(1344); // 7 × 192
-    expect(d.pixelsH).toBe(576);  // 3 × 192
+    expect(d.pixelsW).toBe(1792); // 7 × 256
+    expect(d.pixelsH).toBe(768);  // 3 × 256
   });
 
   it("aspect ratio", () => {
@@ -69,7 +69,7 @@ describe("calcMaterials — 21 panels (reference sheet values)", () => {
   it("Neutrik Couplers = 4 (fixed)", () => { expect(m.neutrikCouplers).toBe(4); });
   it("PROC Flightcase = 1 (fixed)", () => { expect(m.procFlightcase).toBe(1); });
   it("LED spares = ceil(21 × 0.1) = 3", () => { expect(m.ledSpares).toBe(3); });
-  it("Processor = 1 (HD sufficient for 1344×576)", () => { expect(m.processor).toBe(1); });
+  it("Processor = 1 (HD sufficient for 1792×768)", () => { expect(m.processor).toBe(1); });
   it("POWER/HDMI/USB-A/UTP = 1", () => { expect(m.powerHdmiUsbUtp).toBe(1); });
   it("Mediaplayer = 1", () => { expect(m.mediaplayer).toBe(1); });
   it("POWER/HDMI/USB stick = 1", () => { expect(m.powerHdmiUsbStick).toBe(1); });
@@ -99,8 +99,8 @@ describe("calcPower — 21 panels, 13A circuits at 240V", () => {
 });
 
 describe("calcProcessorFromDimensions", () => {
-  it("1344×576 (7×3) → 1 processor, no upgrade needed", () => {
-    const p = calcProcessorFromDimensions(1344, 576);
+  it("1792×768 (7×3) → 1 processor, no upgrade needed", () => {
+    const p = calcProcessorFromDimensions(1792, 768);
     expect(p.count).toBe(1);
     expect(p.needsUpgrade).toBe(false);
     expect(p.warning).toBeNull();
@@ -121,43 +121,45 @@ describe("calcProcessorFromDimensions", () => {
 // Helper: calcProcessorSufficiency with panel count, default cfg
 function sufficiency(cols: number, rows: number, processorId: string) {
   const panels = cols * rows;
-  const pixelsW = cols * 192;
-  const pixelsH = rows * 192;
+  const pixelsW = cols * 256;
+  const pixelsH = rows * 256;
   return calcProcessorSufficiency(pixelsW, pixelsH, panels, processorId);
 }
 
 describe("calcProcessorSufficiency — three-state panel-load check", () => {
-  it("6×5 (30 panels) with MCTRL660 (32 cap) → TIGHT at 93.75%", () => {
+  // MCTRL660: 4 ports × floor(650000/65536) = 4 × 9 = 36 panels capacity
+
+  it("6×5 (30 panels) with MCTRL660 (36 cap) → OK at 83%", () => {
     const p = sufficiency(6, 5, "mctrl660");
-    expect(p.status).toBe("tight");
+    expect(p.status).toBe("ok");
     expect(p.needsUpgrade).toBe(false);
-    expect(p.panelCapacity).toBe(32); // 4 ports × 8
-    expect(p.panelLoad).toBeCloseTo(30 / 32, 4);
-    expect(p.warning).toMatch(/93%|94%/);
+    expect(p.panelCapacity).toBe(36); // 4 ports × 9
+    expect(p.panelLoad).toBeCloseTo(30 / 36, 4);
+    expect(p.warning).toBeNull();
   });
 
-  it("6×5 (30 panels) with MCTRL660 Pro (48 cap) → OK at 62.5%", () => {
+  it("6×5 (30 panels) with MCTRL660 Pro (54 cap) → OK at 55.6%", () => {
     const p = sufficiency(6, 5, "mctrl660pro");
     expect(p.status).toBe("ok");
     expect(p.needsUpgrade).toBe(false);
-    expect(p.panelCapacity).toBe(48); // 6 ports × 8
+    expect(p.panelCapacity).toBe(54); // 6 ports × 9
     expect(p.warning).toBeNull();
   });
 
-  it("7×3 (21 panels) with MCTRL660 (32 cap) → OK at 65.6%", () => {
+  it("7×3 (21 panels) with MCTRL660 (36 cap) → OK at 58.3%", () => {
     const p = sufficiency(7, 3, "mctrl660");
     expect(p.status).toBe("ok");
-    expect(p.panelLoad).toBeCloseTo(21 / 32, 4);
+    expect(p.panelLoad).toBeCloseTo(21 / 36, 4);
     expect(p.warning).toBeNull();
   });
 
-  it("7×4 (28 panels) with MCTRL660 (32 cap) → TIGHT at 87.5%", () => {
+  it("7×4 (28 panels) with MCTRL660 (36 cap) → OK at 77.8%", () => {
     const p = sufficiency(7, 4, "mctrl660");
-    expect(p.status).toBe("tight");
-    expect(p.panelLoad).toBeCloseTo(28 / 32, 4);
+    expect(p.status).toBe("ok");
+    expect(p.panelLoad).toBeCloseTo(28 / 36, 4);
   });
 
-  it("8×5 (40 panels) with MCTRL660 (32 cap) → INSUFFICIENT", () => {
+  it("8×5 (40 panels) with MCTRL660 (36 cap) → INSUFFICIENT", () => {
     const p = sufficiency(8, 5, "mctrl660");
     expect(p.status).toBe("insufficient");
     expect(p.needsUpgrade).toBe(true);
@@ -165,8 +167,8 @@ describe("calcProcessorSufficiency — three-state panel-load check", () => {
   });
 
   it("pixel resolution failure also gives INSUFFICIENT", () => {
-    // MCTRL660 max 1920×1200; 12×7 = 2304×1344 exceeds it
-    const p = sufficiency(12, 7, "mctrl660");
+    // MCTRL660 max 1920×1200; 8×5 = 2048×1280 exceeds it
+    const p = sufficiency(8, 5, "mctrl660");
     expect(p.status).toBe("insufficient");
     expect(p.warning).toMatch(/⚠/);
   });
@@ -182,7 +184,7 @@ describe("calcAll — 7×3 integration", () => {
   });
   it("content spec uses panel pixel count, not physical size", () => {
     expect(result.contentSpec).toBe(
-      "Create content at 1344×576 px, MP4 H.264, 50 Hz, start pixel 0,0, top-left corner"
+      "Create content at 1792×768 px, MP4 H.264, 50 Hz, start pixel 0,0, top-left corner"
     );
   });
   it("no processor warning for HD-sized screen", () => {
@@ -214,27 +216,27 @@ describe("input mode helpers — 496mm panels", () => {
     expect(r.deltaHMm).toBeCloseTo(1488 - 1500, 0); // -12mm
   });
 
-  it("pixelsToInput — 1344×576 → 7×3 with zero delta (aligned input, no snap needed)", () => {
-    const r = pixelsToInput(1344, 576);
+  it("pixelsToInput — 1792×768 → 7×3 with zero delta (aligned input, no snap needed)", () => {
+    const r = pixelsToInput(1792, 768);
     expect(r.input.columns).toBe(7);
     expect(r.input.rows).toBe(3);
     expect(r.deltaW).toBe(0);
     expect(r.deltaH).toBe(0);
   });
 
-  it("pixelsToInput — 1920×1080 → 10×5.625? rounds correctly", () => {
+  it("pixelsToInput — 1920×1080 → rounds correctly", () => {
     const r = pixelsToInput(1920, 1080);
-    expect(r.input.columns).toBe(10); // 1920/192 = 10 exact
-    expect(r.input.rows).toBe(6);    // 1080/192 = 5.625 → rounds to 6
-    expect(r.deltaW).toBe(0);
-    expect(r.deltaH).toBe(6 * 192 - 1080); // 1152 - 1080 = +72
+    expect(r.input.columns).toBe(8);  // 1920/256 = 7.5 → rounds to 8
+    expect(r.input.rows).toBe(4);     // 1080/256 = 4.21875 → rounds to 4
+    expect(r.deltaW).toBe(8 * 256 - 1920); // 2048 - 1920 = +128
+    expect(r.deltaH).toBe(4 * 256 - 1080); // 1024 - 1080 = -56
   });
 
   it("pixelsToInput snaps non-exact pixels and reports delta", () => {
-    const r = pixelsToInput(1400, 600); // 1400/192 = 7.29 → 7; 600/192 = 3.125 → 3
-    expect(r.input.columns).toBe(7);
-    expect(r.input.rows).toBe(3);
-    expect(r.deltaW).toBe(1344 - 1400); // -56
-    expect(r.deltaH).toBe(576 - 600);   // -24
+    const r = pixelsToInput(1400, 600); // 1400/256 = 5.47 → 5; 600/256 = 2.34 → 2
+    expect(r.input.columns).toBe(5);
+    expect(r.input.rows).toBe(2);
+    expect(r.deltaW).toBe(5 * 256 - 1400); // 1280 - 1400 = -120
+    expect(r.deltaH).toBe(2 * 256 - 600);  // 512 - 600 = -88
   });
 });

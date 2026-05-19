@@ -1,4 +1,4 @@
-import { CONFIG, PROCESSORS, type Config } from "./config";
+import { CONFIG, PROCESSORS, computePanelsPerPort, type Config } from "./config";
 
 export interface ScreenInput {
   columns: number;
@@ -176,9 +176,10 @@ export function calcProcessorSufficiency(
   cfg: Config = CONFIG
 ): ProcessorSpec {
   const model = PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0];
-  const { name, maxPixelsW, maxPixelsH, ports, panelsPerPort } = model;
+  const { name, maxPixelsW, maxPixelsH, ports } = model;
   const tier = maxPixelsW <= 1920 ? "HD" : "4K";
   const label = `${name} (${tier})`;
+  const panelsPerPort = computePanelsPerPort(model.pixelsPerPort, cfg.PANEL_PIXELS_W, cfg.PANEL_PIXELS_H);
   const panelCapacity = ports * panelsPerPort;
   const panelLoad = activePanels / panelCapacity;
   const TIGHT = cfg.PROCESSOR_TIGHT_THRESHOLD;
