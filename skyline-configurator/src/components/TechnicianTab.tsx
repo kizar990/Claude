@@ -211,7 +211,7 @@ export function TechnicianTab({ calc, overrideState, processorId, onProcessorCha
           </TechStat>
         </div>
         <div className="mx-4 mb-4 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded text-xs text-gray-500 dark:text-gray-400 font-mono">
-          {dimensions.activePanels} panels × 150 W = {power.totalWatts} W ÷ 240 V = {power.amps.toFixed(3)} A
+          {dimensions.activePanels} panels × 120 W = {power.totalWatts} W ÷ 240 V = {power.amps.toFixed(3)} A
         </div>
       </section>
 

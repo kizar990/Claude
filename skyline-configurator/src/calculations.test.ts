@@ -77,14 +77,14 @@ describe("calcMaterials — 21 panels (reference sheet values)", () => {
 describe("calcPower — 21 panels, 13A circuits at 240V", () => {
   const p = calcPower(21);
 
-  it("total watts = 21 × 150 = 3150 W", () => {
-    expect(p.totalWatts).toBe(3150);
+  it("total watts = 21 × 120 = 2520 W", () => {
+    expect(p.totalWatts).toBe(2520);
   });
-  it("amps = 3150 / 240 ≈ 13.125 A", () => {
-    expect(p.amps).toBeCloseTo(13.125);
+  it("amps = 2520 / 240 = 10.5 A", () => {
+    expect(p.amps).toBeCloseTo(10.5);
   });
-  it("13A circuits = ceil(3150 / 2496) = 2", () => {
-    expect(p.circuits).toBe(2); // ceil(1.262) = 2
+  it("13A circuits = ceil(2520 / 2496) = 2", () => {
+    expect(p.circuits).toBe(2); // ceil(1.0096) = 2
   });
   it("data links = 2", () => {
     expect(p.utpDataCables).toBe(2);
