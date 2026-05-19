@@ -281,24 +281,90 @@ export function CableRoutingGrid({
     return () => window.removeEventListener("mouseup", onWindowMouseUp);
   }, []);
 
-  // ── Auto-assign serpentine ────────────────────────────────────────────────
-  function autoAssignSerpentine(): Record<string, number[]> {
+  // ── Auto-assignment algorithms ────────────────────────────────────────────
+
+  function serpentineOrder(): number[] {
+    const order: number[] = [];
+    for (let r = 0; r < rows; r++) {
+      if (r % 2 === 0) for (let c = 0; c < columns; c++) order.push(r * columns + c);
+      else for (let c = columns - 1; c >= 0; c--) order.push(r * columns + c);
+    }
+    return order;
+  }
+
+  // Balanced chunks in serpentine order — may cross row boundaries
+  function autoEvenSplit(): Record<string, number[]> {
+    const total = columns * rows;
+    const minPorts = Math.ceil(total / panelsPerPort);
+    const use = Math.min(numPorts, Math.max(minPorts, numPorts));
+    const base = Math.floor(total / use);
+    const extra = total % use;
+    const order = serpentineOrder();
+    const seqs: Record<string, number[]> = {};
+    let idx = 0;
+    for (let p = 1; p <= use; p++) {
+      const cnt = base + (p <= extra ? 1 : 0);
+      seqs[String(p)] = order.slice(idx, idx + cnt);
+      idx += cnt;
+    }
+    return seqs;
+  }
+
+  // Whole rows per port — uses fewer ports when rows < numPorts
+  function autoRowAligned(): Record<string, number[]> {
+    const seqs: Record<string, number[]> = {};
+    function rowPanels(r: number): number[] {
+      if (r % 2 === 0) return Array.from({ length: columns }, (_, c) => r * columns + c);
+      return Array.from({ length: columns }, (_, c) => r * columns + (columns - 1 - c));
+    }
+    if (rows <= numPorts) {
+      for (let r = 0; r < rows; r++) { seqs[String(r + 1)] = rowPanels(r); }
+    } else {
+      const base = Math.floor(rows / numPorts);
+      const extra = rows % numPorts;
+      let rs = 0;
+      for (let p = 1; p <= numPorts; p++) {
+        const nr = base + (p <= extra ? 1 : 0);
+        seqs[String(p)] = [];
+        for (let ri = 0; ri < nr; ri++) seqs[String(p)].push(...rowPanels(rs + ri));
+        rs += nr;
+      }
+    }
+    return seqs;
+  }
+
+  // Whole columns per port — uses fewer ports when columns < numPorts
+  function autoColumnAligned(): Record<string, number[]> {
+    const seqs: Record<string, number[]> = {};
+    const use = Math.min(numPorts, columns);
+    const base = Math.floor(columns / use);
+    const extra = columns % use;
+    let cs = 0;
+    for (let p = 1; p <= use; p++) {
+      const nc = base + (p <= extra ? 1 : 0);
+      seqs[String(p)] = [];
+      for (let ci = 0; ci < nc; ci++) {
+        const col = cs + ci;
+        if (col % 2 === 0) for (let r = 0; r < rows; r++) seqs[String(p)].push(r * columns + col);
+        else for (let r = rows - 1; r >= 0; r--) seqs[String(p)].push(r * columns + col);
+      }
+      cs += nc;
+    }
+    return seqs;
+  }
+
+  // Fills each port to max capacity — uses fewest ports possible
+  function autoMinimumPorts(): Record<string, number[]> {
+    const order = serpentineOrder();
     const seqs: Record<string, number[]> = {};
     let port = 1;
-    for (let r = 0; r < rows && port <= numPorts; r++) {
-      const cols =
-        r % 2 === 0
-          ? Array.from({ length: columns }, (_, c) => c)
-          : Array.from({ length: columns }, (_, c) => columns - 1 - c);
-      for (const c of cols) {
-        if (port > numPorts) break;
+    for (const idx of order) {
+      if (port > numPorts) break;
+      while (port <= numPorts) {
         const k = String(port);
         if (!seqs[k]) seqs[k] = [];
-        if (seqs[k].length >= panelsPerPort) port++;
-        if (port > numPorts) break;
-        const k2 = String(port);
-        if (!seqs[k2]) seqs[k2] = [];
-        seqs[k2].push(r * columns + c);
+        if (seqs[k].length < panelsPerPort) { seqs[k].push(idx); break; }
+        port++;
       }
     }
     return seqs;
@@ -469,18 +535,41 @@ export function CableRoutingGrid({
 
       {/* ── Action buttons ────────────────────────────────────────────────── */}
       {routingMode === "data" && (
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 flex-wrap items-center">
           <button
             onClick={() => onDataPortSequencesChange({})}
             className="text-xs px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
           >
-            Clear all
+            Clear
+          </button>
+          <span className="text-xs text-gray-400 dark:text-gray-500">Auto:</span>
+          <button
+            title="Row strips — one port per row (or grouped rows). Clean horizontal cable runs. Best for most installs. May leave ports unused if there are fewer rows than ports."
+            onClick={() => onDataPortSequencesChange(autoRowAligned())}
+            className="text-xs px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 font-medium"
+          >
+            Row strips
           </button>
           <button
-            onClick={() => onDataPortSequencesChange(autoAssignSerpentine())}
+            title="Even split — balanced panel count across all ports, may cross row boundaries. Use when you need all ports loaded equally."
+            onClick={() => onDataPortSequencesChange(autoEvenSplit())}
             className="text-xs px-3 py-1.5 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40"
           >
-            Auto serpentine
+            Even split
+          </button>
+          <button
+            title="Column strips — one port per column (or grouped columns). Useful for tall narrow walls or when the processor is positioned to one side."
+            onClick={() => onDataPortSequencesChange(autoColumnAligned())}
+            className="text-xs px-3 py-1.5 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+          >
+            Col strips
+          </button>
+          <button
+            title="Min ports — fills each port to maximum capacity before starting the next. Leaves ports free for future expansion or redundancy."
+            onClick={() => onDataPortSequencesChange(autoMinimumPorts())}
+            className="text-xs px-3 py-1.5 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+          >
+            Min ports
           </button>
         </div>
       )}
