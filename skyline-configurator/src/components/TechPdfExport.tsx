@@ -9,6 +9,7 @@ import {
   Rect,
   Line,
   G,
+  Circle,
 } from "@react-pdf/renderer";
 import { Download } from "lucide-react";
 import type { FullConfig } from "../calculations";
@@ -81,6 +82,149 @@ function PdfMiniGrid({
   );
 }
 
+// ── Routing diagram grid (larger, for dedicated pages) ───────────────────────
+
+const PORT_COLORS = [
+  "#2563EB", "#059669", "#7C3AED", "#0891B2",
+  "#0D9488", "#4F46E5", "#1D4ED8", "#047857",
+];
+const CHAIN_COLORS = [
+  "#DC2626", "#EA580C", "#D97706", "#CA8A04",
+  "#92400E", "#BE185D", "#B45309", "#9F1239",
+];
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+const DIAG_MAX_W = 460;
+const DIAG_CELL_GAP = 0.5;
+
+interface RoutingDiagramProps {
+  columns: number;
+  rows: number;
+  sequences: Record<string, number[]>;
+  colors: string[];
+  label: string;
+  widthM: number;
+  heightM: number;
+}
+
+function RoutingDiagram({ columns, rows, sequences, colors, label, widthM, heightM }: RoutingDiagramProps) {
+  const cellSize = Math.min(
+    (DIAG_MAX_W - DIAG_CELL_GAP * (columns - 1)) / columns,
+    40
+  );
+  const gridW = columns * cellSize + DIAG_CELL_GAP * (columns - 1);
+  const gridH = rows * cellSize + DIAG_CELL_GAP * (rows - 1);
+
+  const CALLOUT_T = 18;
+  const CALLOUT_R = 50;
+  const svgW = gridW + CALLOUT_R;
+  const svgH = CALLOUT_T + gridH + 12;
+
+  const panelToSeq: Record<number, number> = {};
+  Object.entries(sequences).forEach(([k, indices]) => {
+    indices.forEach((i) => { panelToSeq[i] = parseInt(k, 10); });
+  });
+
+  function cellX(col: number) { return col * (cellSize + DIAG_CELL_GAP); }
+  function cellY(row: number) { return CALLOUT_T + row * (cellSize + DIAG_CELL_GAP); }
+  function cx(idx: number) { return cellX(idx % columns) + cellSize / 2; }
+  function cy(idx: number) { return cellY(Math.floor(idx / columns)) + cellSize / 2; }
+
+  return (
+    <View>
+      <Svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
+        {/* Width callout */}
+        <Line x1={0} y1={8} x2={gridW} y2={8} stroke="#D63025" strokeWidth={1} />
+        <Line x1={0} y1={4} x2={0} y2={12} stroke="#D63025" strokeWidth={1} />
+        <Line x1={gridW} y1={4} x2={gridW} y2={12} stroke="#D63025" strokeWidth={1} />
+        <Text x={gridW / 2} y={5} textAnchor="middle" style={{ fontSize: 6, fill: "#D63025", fontFamily: "Helvetica-Bold" }}>
+          {widthM.toFixed(3)} m
+        </Text>
+
+        {/* Height callout */}
+        <Line x1={gridW + 10} y1={CALLOUT_T} x2={gridW + 10} y2={CALLOUT_T + gridH} stroke="#D63025" strokeWidth={1} />
+        <Line x1={gridW + 6} y1={CALLOUT_T} x2={gridW + 14} y2={CALLOUT_T} stroke="#D63025" strokeWidth={1} />
+        <Line x1={gridW + 6} y1={CALLOUT_T + gridH} x2={gridW + 14} y2={CALLOUT_T + gridH} stroke="#D63025" strokeWidth={1} />
+        <Text x={gridW + 16} y={CALLOUT_T + gridH / 2} dominantBaseline="middle" style={{ fontSize: 6, fill: "#D63025", fontFamily: "Helvetica-Bold" }}>
+          {heightM.toFixed(3)} m
+        </Text>
+
+        {/* Panel cells */}
+        {Array.from({ length: rows }, (_, r) =>
+          Array.from({ length: columns }, (_, c) => {
+            const idx = r * columns + c;
+            const seqNum = panelToSeq[idx];
+            const fill = seqNum !== undefined
+              ? hexToRgba(colors[(seqNum - 1) % colors.length], 0.3)
+              : "#E2E8F0";
+            const stroke = seqNum !== undefined
+              ? colors[(seqNum - 1) % colors.length]
+              : "#B8C8DC";
+            return (
+              <G key={idx}>
+                <Rect
+                  x={cellX(c)} y={cellY(r)}
+                  width={cellSize} height={cellSize}
+                  fill={fill} stroke={stroke} strokeWidth={0.5}
+                />
+              </G>
+            );
+          })
+        )}
+
+        {/* Cable lines */}
+        {Object.entries(sequences).flatMap(([k, indices]) => {
+          if (indices.length < 2) return [];
+          const num = parseInt(k, 10);
+          const color = colors[(num - 1) % colors.length];
+          return indices.slice(0, -1).map((from, i) => {
+            const to = indices[i + 1];
+            return (
+              <Line
+                key={`${k}-${i}`}
+                x1={cx(from)} y1={cy(from)}
+                x2={cx(to)} y2={cy(to)}
+                stroke={color} strokeWidth={1.2} strokeOpacity={0.85}
+              />
+            );
+          });
+        })}
+
+        {/* Numbered start markers */}
+        {Object.entries(sequences).map(([k, indices]) => {
+          if (indices.length === 0) return null;
+          const num = parseInt(k, 10);
+          const color = colors[(num - 1) % colors.length];
+          const markerR = Math.min(cellSize * 0.22, 6);
+          return (
+            <G key={`marker-${k}`}>
+              <Circle cx={cx(indices[0])} cy={cy(indices[0])} r={markerR} fill={color} />
+              <Text
+                x={cx(indices[0])} y={cy(indices[0])}
+                textAnchor="middle" dominantBaseline="middle"
+                style={{ fontSize: markerR * 1.1, fontFamily: "Helvetica-Bold", fill: "white" }}
+              >
+                {String(num)}
+              </Text>
+            </G>
+          );
+        })}
+
+        {/* FRONT VIEW label */}
+        <Text x={3} y={CALLOUT_T + 7} style={{ fontSize: 5, fontFamily: "Helvetica", fill: "#94A3B8" }}>
+          {label}
+        </Text>
+      </Svg>
+    </View>
+  );
+}
+
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
@@ -120,6 +264,19 @@ const s = StyleSheet.create({
   // content spec
   contentBox:  { marginTop: 6, backgroundColor: "#e8f0fe", borderRadius: 2, padding: "3 6" },
   contentText: { fontSize: 7 },
+  // routing diagram page
+  diagPage:    { fontFamily: "Helvetica", fontSize: 8, color: "#000", padding: 34 },
+  diagTitle:   { fontSize: 11, fontFamily: "Helvetica-Bold", marginBottom: 4 },
+  diagSub:     { fontSize: 7, color: "#555", marginBottom: 10 },
+  legendRow:   { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  legendItem:  { flexDirection: "row", alignItems: "center", gap: 4 },
+  legendDot:   { width: 8, height: 8, borderRadius: 4 },
+  legendText:  { fontSize: 7 },
+  summaryTable:{ marginTop: 10 },
+  summaryHead: { fontSize: 8, fontFamily: "Helvetica-Bold", borderBottomWidth: 0.5, borderBottomColor: "#999", paddingBottom: 1, marginBottom: 2 },
+  summaryRow:  { flexDirection: "row", justifyContent: "space-between", borderBottomWidth: 0.3, borderBottomColor: "#ddd", paddingTop: 1.5, paddingBottom: 1.5 },
+  summaryLabel:{ fontSize: 7, color: "#333" },
+  summaryVal:  { fontSize: 7, fontFamily: "Helvetica-Bold" },
 });
 
 // ── PDF Document ─────────────────────────────────────────────────────────────
@@ -130,15 +287,24 @@ interface DocProps {
   overrides: Overrides;
   blankCells: number[];
   chains: ChainData[];
+  dataPortSequences?: Record<string, number[]>;
+  powerChainSequences?: Record<string, number[]>;
+  numPorts?: number;
+  panelsPerPort?: number;
+  panelPowerW?: number;
+  powerMaxWatts?: number;
 }
 
-function TechDocument({ meta, calc, overrides, blankCells, chains }: DocProps) {
+function TechDocument({ meta, calc, overrides, blankCells, chains, dataPortSequences, powerChainSequences, numPorts, panelsPerPort, panelPowerW, powerMaxWatts }: DocProps) {
   const { dimensions, materials, power, processor } = calc;
   const r = <T extends string | number>(key: string, auto: T): T =>
     resolve(key, auto, overrides) as T;
 
   const columns = Math.round(dimensions.pixelsW / CONFIG.PANEL_PIXELS_W);
   const rows    = Math.round(dimensions.pixelsH / CONFIG.PANEL_PIXELS_H);
+
+  const widthM  = Number(r("widthM", dimensions.widthM));
+  const heightM = Number(r("heightM", dimensions.heightM));
 
   const matItems: [string, string][] = [
     ["LED Flightcases",    String(r("mat_ledFlightcases",  materials.ledFlightcases))],
@@ -163,8 +329,12 @@ function TechDocument({ meta, calc, overrides, blankCells, chains }: DocProps) {
   const col1 = matItems.slice(0, half);
   const col2 = matItems.slice(half);
 
+  const hasDataRouting = dataPortSequences && Object.values(dataPortSequences).some((v) => v.length > 0);
+  const hasPowerRouting = powerChainSequences && Object.values(powerChainSequences).some((v) => v.length > 0);
+
   return (
     <Document>
+      {/* ── Page 1: Summary ───────────────────────────────────────────────── */}
       <Page size="A4" style={s.page}>
 
         {/* Header */}
@@ -184,7 +354,7 @@ function TechDocument({ meta, calc, overrides, blankCells, chains }: DocProps) {
         <View style={s.specRow}>
           {([
             ["Panels",     `${dimensions.activePanels} (${columns}×${rows})`],
-            ["Size",       `${Number(r("widthM", dimensions.widthM)).toFixed(3)}m × ${Number(r("heightM", dimensions.heightM)).toFixed(3)}m`],
+            ["Size",       `${widthM.toFixed(3)}m × ${heightM.toFixed(3)}m`],
             ["Resolution", `${r("pixelsW", dimensions.pixelsW)}×${r("pixelsH", dimensions.pixelsH)}`],
             ["Weight",     `${Math.round(Number(r("totalWeight", dimensions.activePanels * 10)))} kg`],
             ["Processor",  processor.modelName],
@@ -258,6 +428,142 @@ function TechDocument({ meta, calc, overrides, blankCells, chains }: DocProps) {
         </View>
 
       </Page>
+
+      {/* ── Page 2: Data routing diagram (only if routing has been planned) ─ */}
+      {hasDataRouting && (
+        <Page size="A4" style={s.diagPage}>
+          <View style={s.header}>
+            <View>
+              <Text style={s.jobTitle}>{meta.name || "LED Wall Job"} — Data Routing</Text>
+              <Text style={s.subTitle}>Front view · {columns} × {rows} panels · {processor.modelName}</Text>
+            </View>
+            <View style={s.metaRight}>
+              {meta.jobNumber ? <Text style={s.metaLine}>Job: {meta.jobNumber}</Text> : null}
+              {meta.date      ? <Text style={s.metaLine}>Date: {meta.date}</Text>      : null}
+            </View>
+          </View>
+
+          <RoutingDiagram
+            columns={columns}
+            rows={rows}
+            sequences={dataPortSequences!}
+            colors={PORT_COLORS}
+            label="FRONT VIEW — DATA"
+            widthM={widthM}
+            heightM={heightM}
+          />
+
+          {/* Legend */}
+          <View style={s.legendRow}>
+            {Object.entries(dataPortSequences!).filter(([, v]) => v.length > 0).map(([k]) => {
+              const num = parseInt(k, 10);
+              const color = PORT_COLORS[(num - 1) % PORT_COLORS.length];
+              const count = dataPortSequences![k].length;
+              return (
+                <View key={k} style={s.legendItem}>
+                  <View style={[s.legendDot, { backgroundColor: color }]} />
+                  <Text style={s.legendText}>Port {num}: {count} panels</Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Summary table */}
+          <View style={s.summaryTable}>
+            <Text style={s.summaryHead}>PORT SUMMARY</Text>
+            {Object.entries(dataPortSequences!).filter(([, v]) => v.length > 0).map(([k]) => {
+              const num = parseInt(k, 10);
+              const count = dataPortSequences![k].length;
+              const overLimit = panelsPerPort !== undefined && count > panelsPerPort;
+              return (
+                <View key={k} style={s.summaryRow}>
+                  <Text style={s.summaryLabel}>Port {num}</Text>
+                  <Text style={[s.summaryVal, overLimit ? { color: "#cc0000" } : {}]}>
+                    {count} panels{overLimit ? " ⚠ over limit" : ""}
+                    {panelsPerPort !== undefined ? ` (max ${panelsPerPort})` : ""}
+                  </Text>
+                </View>
+              );
+            })}
+            {numPorts !== undefined && panelsPerPort !== undefined && (
+              <View style={[s.summaryRow, { borderBottomWidth: 0 }]}>
+                <Text style={s.summaryLabel}>Processor capacity</Text>
+                <Text style={s.summaryVal}>{numPorts} ports × {panelsPerPort} panels = {numPorts * panelsPerPort} total</Text>
+              </View>
+            )}
+          </View>
+        </Page>
+      )}
+
+      {/* ── Page 3: Power routing diagram (only if routing has been planned) */}
+      {hasPowerRouting && (
+        <Page size="A4" style={s.diagPage}>
+          <View style={s.header}>
+            <View>
+              <Text style={s.jobTitle}>{meta.name || "LED Wall Job"} — Power Routing</Text>
+              <Text style={s.subTitle}>Front view · {columns} × {rows} panels · {panelPowerW ?? CONFIG.PANEL_POWER_W} W/panel</Text>
+            </View>
+            <View style={s.metaRight}>
+              {meta.jobNumber ? <Text style={s.metaLine}>Job: {meta.jobNumber}</Text> : null}
+              {meta.date      ? <Text style={s.metaLine}>Date: {meta.date}</Text>      : null}
+            </View>
+          </View>
+
+          <RoutingDiagram
+            columns={columns}
+            rows={rows}
+            sequences={powerChainSequences!}
+            colors={CHAIN_COLORS}
+            label="FRONT VIEW — POWER"
+            widthM={widthM}
+            heightM={heightM}
+          />
+
+          {/* Legend */}
+          <View style={s.legendRow}>
+            {Object.entries(powerChainSequences!).filter(([, v]) => v.length > 0).map(([k]) => {
+              const num = parseInt(k, 10);
+              const color = CHAIN_COLORS[(num - 1) % CHAIN_COLORS.length];
+              const pw = panelPowerW ?? CONFIG.PANEL_POWER_W;
+              const count = powerChainSequences![k].length;
+              return (
+                <View key={k} style={s.legendItem}>
+                  <View style={[s.legendDot, { backgroundColor: color }]} />
+                  <Text style={s.legendText}>Chain {num}: {count} panels · {count * pw} W</Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Summary table */}
+          <View style={s.summaryTable}>
+            <Text style={s.summaryHead}>CHAIN SUMMARY</Text>
+            {Object.entries(powerChainSequences!).filter(([, v]) => v.length > 0).map(([k]) => {
+              const num = parseInt(k, 10);
+              const pw = panelPowerW ?? CONFIG.PANEL_POWER_W;
+              const maxW = powerMaxWatts ?? 2400;
+              const count = powerChainSequences![k].length;
+              const watts = count * pw;
+              const overLimit = watts > maxW;
+              return (
+                <View key={k} style={s.summaryRow}>
+                  <Text style={s.summaryLabel}>Chain {num}</Text>
+                  <Text style={[s.summaryVal, overLimit ? { color: "#cc0000" } : {}]}>
+                    {count} panels · {watts} W{overLimit ? " ⚠ over budget" : ""}
+                    {` (budget ${maxW} W)`}
+                  </Text>
+                </View>
+              );
+            })}
+            <View style={[s.summaryRow, { borderBottomWidth: 0 }]}>
+              <Text style={s.summaryLabel}>Total power load</Text>
+              <Text style={s.summaryVal}>
+                {Object.values(powerChainSequences!).flat().length * (panelPowerW ?? CONFIG.PANEL_POWER_W)} W across {Object.values(powerChainSequences!).filter((v) => v.length > 0).length} chains
+              </Text>
+            </View>
+          </View>
+        </Page>
+      )}
     </Document>
   );
 }
@@ -268,13 +574,27 @@ interface ButtonProps extends DocProps {
   processorId?: string;
 }
 
-export function TechPdfDownloadButton({ meta, calc, overrides, blankCells, chains }: ButtonProps) {
+export function TechPdfDownloadButton({ meta, calc, overrides, blankCells, chains, dataPortSequences, powerChainSequences, numPorts, panelsPerPort, panelPowerW, powerMaxWatts }: ButtonProps) {
   const slug = [meta.jobNumber, meta.name].filter(Boolean).join("-").replace(/\s+/g, "-") || "tech-sheet";
   const fileName = `tech-sheet-${slug}.pdf`;
 
   return (
     <PDFDownloadLink
-      document={<TechDocument meta={meta} calc={calc} overrides={overrides} blankCells={blankCells} chains={chains} />}
+      document={
+        <TechDocument
+          meta={meta}
+          calc={calc}
+          overrides={overrides}
+          blankCells={blankCells}
+          chains={chains}
+          dataPortSequences={dataPortSequences}
+          powerChainSequences={powerChainSequences}
+          numPorts={numPorts}
+          panelsPerPort={panelsPerPort}
+          panelPowerW={panelPowerW}
+          powerMaxWatts={powerMaxWatts}
+        />
+      }
       fileName={fileName}
     >
       {({ loading }) => (

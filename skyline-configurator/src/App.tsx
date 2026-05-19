@@ -27,7 +27,7 @@ import {
   type SavedProject,
   type ChainData,
 } from "./store";
-import { CONFIG, PROCESSORS } from "./config";
+import { CONFIG, PROCESSORS, computePanelsPerPort } from "./config";
 
 type Tab = "designer" | "technician" | "render";
 
@@ -66,6 +66,15 @@ export default function App() {
   const calc = useMemo(
     () => calcAll({ ...input, blankPanels: input.blankPanels + blankCells.length }, cfg, processorId),
     [input, blankCells, cfg, processorId]
+  );
+
+  const selectedProcessor = useMemo(
+    () => PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0],
+    [processorId]
+  );
+  const panelsPerPort = useMemo(
+    () => computePanelsPerPort(selectedProcessor.pixelsPerPort, CONFIG.PANEL_PIXELS_W, CONFIG.PANEL_PIXELS_H),
+    [selectedProcessor]
   );
 
   function handleSave() {
@@ -199,6 +208,12 @@ export default function App() {
               overrides={overrideState.overrides}
               blankCells={blankCells}
               chains={chains}
+              dataPortSequences={dataPortSequences}
+              powerChainSequences={powerChainSequences}
+              numPorts={selectedProcessor.ports}
+              panelsPerPort={panelsPerPort}
+              panelPowerW={CONFIG.PANEL_POWER_W}
+              powerMaxWatts={powerMaxWatts}
             />
           </Suspense>
           <button

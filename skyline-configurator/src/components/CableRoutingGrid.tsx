@@ -69,6 +69,7 @@ export function CableRoutingGrid({
   routingMode,
   dataPortSequences,
   powerChainSequences,
+  powerMaxWatts,
   onModeChange,
   onDataPortSequencesChange,
   onPowerChainSequencesChange,
@@ -180,22 +181,58 @@ export function CableRoutingGrid({
     onDataPortSequencesChange(newSeqs);
   }
 
+  // ── Add panel to current power chain ─────────────────────────────────────
+  function addPanelToChain(panelIdx: number, e?: { clientX: number; clientY: number }) {
+    if (routingMode !== "power") return;
+    const chainKey = String(activeChain);
+    const panelsPerChain = Math.floor(powerMaxWatts / panelPowerW);
+
+    const existingChain = panelToChain[panelIdx];
+    if (existingChain === activeChain) return;
+
+    const currentSeq = powerChainSequences[chainKey] ?? [];
+    if (currentSeq.length >= panelsPerChain) {
+      setPortFullWarning(activeChain);
+      if (e) setPortFullPos({ x: e.clientX, y: e.clientY });
+      setTimeout(() => setPortFullWarning(null), 1200);
+      return;
+    }
+
+    const newSeqs = { ...powerChainSequences };
+
+    if (existingChain !== undefined) {
+      const oldKey = String(existingChain);
+      newSeqs[oldKey] = (newSeqs[oldKey] ?? []).filter((i) => i !== panelIdx);
+      setFlashPanel(panelIdx);
+      setTimeout(() => setFlashPanel(null), 300);
+    }
+
+    if (!newSeqs[chainKey]) newSeqs[chainKey] = [];
+    if (!newSeqs[chainKey].includes(panelIdx)) {
+      newSeqs[chainKey] = [...newSeqs[chainKey], panelIdx];
+    }
+
+    onPowerChainSequencesChange(newSeqs);
+  }
+
   // ── Drag handlers ─────────────────────────────────────────────────────────
   function handleMouseDown(e: React.MouseEvent<SVGSVGElement>) {
-    if (routingMode !== "data") return;
+    if (routingMode !== "data" && routingMode !== "power") return;
     const idx = clientToPanel(e);
     if (idx === null) return;
     setIsDragging(true);
     setLastTouchedPanel(idx);
-    addPanelToPort(idx, e);
+    if (routingMode === "data") addPanelToPort(idx, e);
+    else addPanelToChain(idx, e);
   }
 
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
-    if (!isDragging || routingMode !== "data") return;
+    if (!isDragging || (routingMode !== "data" && routingMode !== "power")) return;
     const idx = clientToPanel(e);
     if (idx === null || idx === lastTouchedPanel) return;
     setLastTouchedPanel(idx);
-    addPanelToPort(idx, e);
+    if (routingMode === "data") addPanelToPort(idx, e);
+    else addPanelToChain(idx, e);
   }
 
   function handleMouseUp() {
@@ -205,24 +242,26 @@ export function CableRoutingGrid({
 
   // Touch handlers
   function handleTouchStart(e: React.TouchEvent<SVGSVGElement>) {
-    if (routingMode !== "data") return;
+    if (routingMode !== "data" && routingMode !== "power") return;
     e.preventDefault();
     const t = e.touches[0];
     const idx = clientToPanel(t);
     if (idx === null) return;
     setIsDragging(true);
     setLastTouchedPanel(idx);
-    addPanelToPort(idx, t);
+    if (routingMode === "data") addPanelToPort(idx, t);
+    else addPanelToChain(idx, t);
   }
 
   function handleTouchMove(e: React.TouchEvent<SVGSVGElement>) {
-    if (!isDragging || routingMode !== "data") return;
+    if (!isDragging || (routingMode !== "data" && routingMode !== "power")) return;
     e.preventDefault();
     const t = e.touches[0];
     const idx = clientToPanel(t);
     if (idx === null || idx === lastTouchedPanel) return;
     setLastTouchedPanel(idx);
-    addPanelToPort(idx, t);
+    if (routingMode === "data") addPanelToPort(idx, t);
+    else addPanelToChain(idx, t);
   }
 
   function handleTouchEnd() {
@@ -466,7 +505,7 @@ export function CableRoutingGrid({
           aria-label="Cable routing grid"
           style={{
             maxHeight: 520,
-            cursor: routingMode === "data" ? (isDragging ? "crosshair" : "pointer") : "default",
+            cursor: (routingMode === "data" || routingMode === "power") ? (isDragging ? "crosshair" : "pointer") : "default",
           }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -608,13 +647,15 @@ export function CableRoutingGrid({
           </text>
         </svg>
 
-        {/* ── Port-full warning tooltip ────────────────────────────── */}
+        {/* ── Port/chain-full warning tooltip ─────────────────────── */}
         {portFullWarning !== null && portFullPos !== null && (
           <div
             className="fixed z-50 pointer-events-none bg-amber-100 dark:bg-amber-900 border border-amber-400 text-amber-800 dark:text-amber-200 text-xs px-2 py-1 rounded shadow"
             style={{ left: portFullPos.x + 12, top: portFullPos.y - 24 }}
           >
-            Port {portFullWarning} full ({panelsPerPort} panels max)
+            {routingMode === "power"
+              ? `Chain ${portFullWarning} full (${Math.floor(powerMaxWatts / panelPowerW)} panels max)`
+              : `Port ${portFullWarning} full (${panelsPerPort} panels max)`}
           </div>
         )}
       </div>
