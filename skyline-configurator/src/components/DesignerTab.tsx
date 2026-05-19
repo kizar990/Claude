@@ -1,9 +1,11 @@
 import { RotateCcw } from "lucide-react";
 import { EditableField } from "./EditableField";
 import { ProcessorBadge } from "./ProcessorBadge";
+import { ScreenLayoutDiagram } from "./ScreenLayoutDiagram";
 import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
+import { CONFIG } from "../config";
 
 interface Props {
   calc: FullConfig;
@@ -107,6 +109,27 @@ export function DesignerTab({ calc, overrideState }: Props) {
           </Stat>
         </div>
       </section>
+
+      {/* Screen layout diagram */}
+      {dimensions.activePanels > 0 && (
+        <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Screen Layout</h3>
+          </div>
+          <div className="px-6 py-5">
+            <ScreenLayoutDiagram
+              columns={Math.round(dimensions.pixelsW / CONFIG.PANEL_PIXELS_W)}
+              rows={Math.round(dimensions.pixelsH / CONFIG.PANEL_PIXELS_H)}
+              widthM={dimensions.widthM}
+              heightM={dimensions.heightM}
+              panelWidthMm={CONFIG.PANEL_WIDTH_MM}
+              panelHeightMm={CONFIG.PANEL_HEIGHT_MM}
+              pixelPitch={CONFIG.PIXEL_PITCH}
+              activePanels={dimensions.activePanels}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Power summary */}
       <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
