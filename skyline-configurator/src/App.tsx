@@ -4,6 +4,7 @@ import { DesignerTab } from "./components/DesignerTab";
 import { TechnicianTab } from "./components/TechnicianTab";
 import { LayoutTab } from "./components/LayoutTab";
 import { ProjectDropdown } from "./components/ProjectDropdown";
+import { ProfileSwitcher } from "./components/ProfileSwitcher";
 import { lazy, Suspense } from "react";
 const ClientPdfModal = lazy(() =>
   import("./components/ClientPdfExport").then((m) => ({ default: m.ClientPdfModal }))
@@ -28,6 +29,13 @@ import {
 } from "./store";
 import { CONFIG, PROCESSORS, computePanelsPerPort } from "./config";
 import { PRESET_PANELS, loadCustomPanels, type PanelSpec } from "./panels";
+import {
+  loadProfiles,
+  getActiveProfileId,
+  setActiveProfileId,
+  profileAvailableProcessors,
+  type Profile,
+} from "./profiles";
 
 type Tab = "designer" | "technician" | "render";
 
@@ -54,6 +62,40 @@ export default function App() {
   const [powerChainSequences, setPowerChainSequences] = useState<Record<string, number[]>>({});
   const [powerMaxWatts, setPowerMaxWatts] = useState(2400);
   const [powerSizingMode, setPowerSizingMode] = useState<"operating" | "max">("operating");
+
+  // Profile system
+  const [profiles, setProfiles] = useState<Profile[]>(() => loadProfiles());
+  const [activeProfileId, setActiveProfileIdState] = useState<string>(() => getActiveProfileId());
+  const activeProfile = useMemo(
+    () => profiles.find((p) => p.id === activeProfileId) ?? profiles[0],
+    [profiles, activeProfileId]
+  );
+  const availableProcessors = useMemo(
+    () => profileAvailableProcessors(activeProfile),
+    [activeProfile]
+  );
+
+  function handleSwitchProfile(id: string) {
+    setActiveProfileId(id);
+    setActiveProfileIdState(id);
+    const newProfile = profiles.find((p) => p.id === id);
+    if (!newProfile) return;
+    // Switch processor if the current one isn't in the new profile's stock
+    if (!newProfile.processorStockIds.includes(processorId)) {
+      setProcessorId(newProfile.defaultProcessorId);
+    }
+    // Switch panel if the current one isn't in the new profile's library
+    if (!newProfile.panels.find((p) => p.id === activePanel.id)) {
+      const defaultPanel =
+        newProfile.panels.find((p) => p.id === newProfile.defaultPanelId) ??
+        newProfile.panels[0];
+      if (defaultPanel) setActivePanel(defaultPanel);
+    }
+  }
+
+  function handleProfilesChange(updated: Profile[]) {
+    setProfiles(updated);
+  }
 
   // Dirty tracking
   const initialized = useRef(false);
@@ -263,10 +305,18 @@ export default function App() {
       {/* Top bar */}
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 no-print">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-3 flex-wrap">
-          <span className="font-bold text-lg tracking-tight text-gray-900 dark:text-gray-100">
-            SKYLINE{" "}
-            <span className="text-blue-600 font-normal text-sm">LED Wall Configurator</span>
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-lg tracking-tight text-gray-900 dark:text-gray-100">
+              SKYLINE{" "}
+              <span className="text-blue-600 font-normal text-sm">LED Wall Configurator</span>
+            </span>
+            <ProfileSwitcher
+              profiles={profiles}
+              activeProfile={activeProfile}
+              onSwitch={handleSwitchProfile}
+              onProfilesChange={handleProfilesChange}
+            />
+          </div>
           <div className="flex-1" />
 
           {/* Tabs */}
@@ -359,6 +409,7 @@ export default function App() {
             onMetaChange={(m) => { setMeta(m); markDirty(); }}
             darkMode={darkMode}
             onDarkToggle={() => setDarkMode((d) => !d)}
+            libraryPanels={activeProfile.panels}
           />
 
           {tab === "designer" && (
@@ -390,6 +441,7 @@ export default function App() {
               powerSizingMode={powerSizingMode}
               onPowerSizingModeChange={(m) => { setPowerSizingMode(m); markDirty(); }}
               activePanel={activePanel}
+              availableProcessors={availableProcessors}
             />
           )}
 

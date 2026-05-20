@@ -18,6 +18,7 @@ interface Props {
   onMetaChange: (m: ProjectMeta) => void;
   darkMode: boolean;
   onDarkToggle: () => void;
+  libraryPanels?: PanelSpec[];
 }
 
 export function InputSection({
@@ -29,6 +30,7 @@ export function InputSection({
   onMetaChange,
   darkMode,
   onDarkToggle,
+  libraryPanels,
 }: Props) {
   const [mode, setMode] = useState<InputMode>("panels");
   const [showPanelPicker, setShowPanelPicker] = useState(false);
@@ -260,6 +262,7 @@ export function InputSection({
           activePanel={activePanel}
           onSelect={(p) => { onPanelChange(p); setShowPanelPicker(false); }}
           onClose={() => setShowPanelPicker(false)}
+          libraryPanels={libraryPanels}
         />
       )}
       {showPanelInfo && (

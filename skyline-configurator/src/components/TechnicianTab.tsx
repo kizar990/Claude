@@ -34,6 +34,8 @@ interface Props {
   powerSizingMode: "operating" | "max";
   onPowerSizingModeChange: (m: "operating" | "max") => void;
   activePanel: PanelSpec;
+  /** Filtered processor list from the active profile (defaults to all if not provided) */
+  availableProcessors?: import("../config").ProcessorModel[];
 }
 
 export function TechnicianTab({
@@ -54,12 +56,14 @@ export function TechnicianTab({
   powerSizingMode,
   onPowerSizingModeChange,
   activePanel,
+  availableProcessors,
 }: Props) {
   const { dimensions, materials, power, processor } = calc;
   const { overrides, resetAll } = overrideState;
   const anyOverride = Object.keys(overrides).length > 0;
 
-  const selectedProcessor = PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0];
+  const processorList = availableProcessors ?? PROCESSORS;
+  const selectedProcessor = processorList.find((p) => p.id === processorId) ?? processorList[0];
   const panelsPerPort = computePanelsPerPort(
     selectedProcessor.recommendedPerPortPixels ?? 0,
     dimensions.panelPixelsW,
@@ -144,7 +148,7 @@ export function TechnicianTab({
               onChange={(e) => onProcessorChange(e.target.value)}
               className="text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 dark:text-gray-100"
             >
-              {PROCESSORS.map((p) => (
+              {processorList.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>

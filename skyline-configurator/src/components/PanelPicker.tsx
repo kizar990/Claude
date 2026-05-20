@@ -13,6 +13,8 @@ interface Props {
   activePanel: PanelSpec;
   onSelect: (p: PanelSpec) => void;
   onClose: () => void;
+  /** If provided, shows this list as the profile panel library instead of PRESET_PANELS */
+  libraryPanels?: PanelSpec[];
 }
 
 interface FormState {
@@ -46,7 +48,9 @@ function panelToForm(panel: PanelSpec): FormState {
   };
 }
 
-export function PanelPicker({ activePanel, onSelect, onClose }: Props) {
+export function PanelPicker({ activePanel, onSelect, onClose, libraryPanels }: Props) {
+  const presetPanels = libraryPanels ?? PRESET_PANELS;
+  const presetLabel = libraryPanels ? "Profile Panels" : "Presets";
   const dialogRef = useRef<HTMLDivElement>(null);
   const [customPanels, setCustomPanels] = useState<PanelSpec[]>(() => loadCustomPanels());
   const [mode, setMode] = useState<"list" | "add" | "edit">("list");
@@ -232,11 +236,11 @@ export function PanelPicker({ activePanel, onSelect, onClose }: Props) {
           {!isFormMode ? (
             /* ── Panel list ── */
             <div className="space-y-4">
-              {/* Presets */}
+              {/* Profile / preset panels */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">Presets</p>
+                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">{presetLabel}</p>
                 <div className="space-y-1.5">
-                  {PRESET_PANELS.map((panel) => (
+                  {presetPanels.map((panel) => (
                     <PanelCard
                       key={panel.id}
                       panel={panel}
