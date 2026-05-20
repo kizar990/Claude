@@ -1,10 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
-import { Save, FilePlus } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { InputSection } from "./components/InputSection";
 import { DesignerTab } from "./components/DesignerTab";
 import { TechnicianTab } from "./components/TechnicianTab";
 import { LayoutTab } from "./components/LayoutTab";
-import { SaveSidebar } from "./components/SaveSidebar";
+import { ProjectDropdown } from "./components/ProjectDropdown";
 import { lazy, Suspense } from "react";
 const ClientPdfModal = lazy(() =>
   import("./components/ClientPdfExport").then((m) => ({ default: m.ClientPdfModal }))
@@ -12,7 +11,6 @@ const ClientPdfModal = lazy(() =>
 const TechPdfDownloadButton = lazy(() =>
   import("./components/TechPdfExport").then((m) => ({ default: m.TechPdfDownloadButton }))
 );
-import { TechPrintButton } from "./components/TechPrintout";
 import { calcAll } from "./calculations";
 import { useOverrides } from "./useOverrides";
 import {
@@ -20,6 +18,7 @@ import {
   saveProject,
   deleteProject,
   duplicateProject,
+  touchProjectLastOpened,
   defaultMeta,
   configFromPanel,
   type ProjectMeta,
@@ -32,7 +31,7 @@ import { PRESET_PANELS, loadCustomPanels, type PanelSpec } from "./panels";
 
 type Tab = "designer" | "technician" | "render";
 
-const DEFAULT_INPUT: ScreenInputState = { columns: 7, rows: 3, blankPanels: 0 };
+const DEFAULT_INPUT: ScreenInputState = { columns: 4, rows: 3, blankPanels: 0 };
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(
@@ -44,7 +43,6 @@ export default function App() {
   const [meta, setMeta] = useState<ProjectMeta>(defaultMeta);
   const [activePanel, setActivePanel] = useState<PanelSpec>(PRESET_PANELS[0]);
   const [projects, setProjects] = useState<SavedProject[]>(() => listProjects());
-  const [showSidebar, setShowSidebar] = useState(false);
   const [currentId, setCurrentId] = useState<string>(() => crypto.randomUUID());
   const [blankCells, setBlankCells] = useState<number[]>([]);
   const [chains, setChains] = useState<ChainData[]>([]);
@@ -56,6 +54,22 @@ export default function App() {
   const [powerChainSequences, setPowerChainSequences] = useState<Record<string, number[]>>({});
   const [powerMaxWatts, setPowerMaxWatts] = useState(2400);
   const [powerSizingMode, setPowerSizingMode] = useState<"operating" | "max">("operating");
+
+  // Dirty tracking
+  const initialized = useRef(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const markDirty = () => setIsDirty(true);
+
+  useEffect(() => {
+    if (!initialized.current) { initialized.current = true; return; }
+    setIsDirty(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, meta, activePanel, blankCells, chains, processorId, routingMode,
+      cableEntry, powerSizingMode, powerMaxWatts]);
+
+  // Project name modals
+  const [pendingNameAction, setPendingNameAction] = useState<"save" | "saveas" | null>(null);
+  const [showNewConfirm, setShowNewConfirm] = useState(false);
 
   const overrideState = useOverrides();
 
@@ -87,15 +101,18 @@ export default function App() {
     [selectedProcessor, cfg]
   );
 
-  function handleSave() {
-    const project: SavedProject = {
-      id: currentId,
+  // ── Save helpers ─────────────────────────────────────────────────────────
+
+  function buildProject(id: string, m: ProjectMeta): SavedProject {
+    return {
+      id,
       savedAt: new Date().toISOString(),
-      meta,
+      lastOpenedAt: new Date().toISOString(),
+      meta: m,
       input,
       overrides: overrideState.overrides,
-      panelWidthMm: activePanel.widthMm,   // backward compat
-      panelHeightMm: activePanel.heightMm, // backward compat
+      panelWidthMm: activePanel.widthMm,
+      panelHeightMm: activePanel.heightMm,
       panelSpec: activePanel,
       blankCells,
       chains,
@@ -107,15 +124,95 @@ export default function App() {
       powerMaxWatts,
       powerSizingMode,
     };
-    saveProject(project);
-    setProjects(listProjects());
   }
 
+  function commitSave(id: string, m: ProjectMeta) {
+    saveProject(buildProject(id, m));
+    setProjects(listProjects());
+    setIsDirty(false);
+  }
+
+  function handleSave() {
+    if (!meta.name) {
+      setPendingNameAction("save");
+      return;
+    }
+    commitSave(currentId, meta);
+  }
+
+  function handleSaveAs() {
+    setPendingNameAction("saveas");
+  }
+
+  function handleNameConfirm(name: string) {
+    const trimmed = name.trim();
+    if (pendingNameAction === "saveas") {
+      const newId = crypto.randomUUID();
+      const newMeta = { ...meta, name: trimmed };
+      setCurrentId(newId);
+      setMeta(newMeta);
+      commitSave(newId, newMeta);
+    } else {
+      const newMeta = { ...meta, name: trimmed };
+      setMeta(newMeta);
+      commitSave(currentId, newMeta);
+    }
+    setPendingNameAction(null);
+  }
+
+  function handleNameSkip() {
+    // Save without name (only valid for "save" action, not "saveas")
+    commitSave(currentId, meta);
+    setPendingNameAction(null);
+  }
+
+  // ── New project ──────────────────────────────────────────────────────────
+
+  function handleNew() {
+    if (isDirty) {
+      setShowNewConfirm(true);
+    } else {
+      doNew();
+    }
+  }
+
+  function doNew() {
+    initialized.current = false;
+    setCurrentId(crypto.randomUUID());
+    setMeta(defaultMeta());
+    setInput(DEFAULT_INPUT);
+    setActivePanel(PRESET_PANELS[0]);
+    setBlankCells([]);
+    setChains([]);
+    setProcessorId(PROCESSORS[0].id);
+    setRoutingMode("layout");
+    setCableEntry("bottom");
+    setDataPortSequences({});
+    setPowerChainSequences({});
+    setPowerMaxWatts(2400);
+    setPowerSizingMode("operating");
+    overrideState.resetAll();
+    setIsDirty(false);
+    setShowNewConfirm(false);
+  }
+
+  function handleNewSaveFirst() {
+    setShowNewConfirm(false);
+    if (!meta.name) {
+      setPendingNameAction("save");
+    } else {
+      commitSave(currentId, meta);
+      doNew();
+    }
+  }
+
+  // ── Load ─────────────────────────────────────────────────────────────────
+
   function handleLoad(p: SavedProject) {
+    initialized.current = false;
     setCurrentId(p.id);
     setMeta(p.meta);
     setInput(p.input);
-    // Restore active panel
     if (p.panelSpec) {
       if (!p.panelSpec.isPreset) {
         const libPanels = loadCustomPanels();
@@ -125,7 +222,6 @@ export default function App() {
         setActivePanel(p.panelSpec);
       }
     } else {
-      // backward compat: find matching preset by dimensions
       const found = PRESET_PANELS.find(
         (panel) => panel.widthMm === p.panelWidthMm && panel.heightMm === p.panelHeightMm
       );
@@ -144,7 +240,9 @@ export default function App() {
     setTimeout(() => {
       Object.entries(p.overrides).forEach(([k, v]) => overrideState.set(k, v));
     }, 0);
-    setShowSidebar(false);
+    touchProjectLastOpened(p.id);
+    setProjects(listProjects());
+    setIsDirty(false);
   }
 
   function handleDelete(id: string) {
@@ -158,19 +256,6 @@ export default function App() {
       saveProject(dup);
       setProjects(listProjects());
     }
-  }
-
-  function handleNew() {
-    if (!confirm("Start a new project? Unsaved changes will be lost.")) return;
-    setCurrentId(crypto.randomUUID());
-    setMeta(defaultMeta());
-    setInput(DEFAULT_INPUT);
-    setActivePanel(PRESET_PANELS[0]);
-    setBlankCells([]);
-    setChains([]);
-    setProcessorId(PROCESSORS[0].id);
-    setPowerSizingMode("operating");
-    overrideState.resetAll();
   }
 
   return (
@@ -223,13 +308,6 @@ export default function App() {
           </label>
 
           {/* Actions */}
-          <TechPrintButton
-            meta={meta}
-            calc={calc}
-            overrides={overrideState.overrides}
-            blankCells={blankCells}
-            chains={chains}
-          />
           <Suspense fallback={null}>
             <TechPdfDownloadButton
               meta={meta}
@@ -242,8 +320,11 @@ export default function App() {
               numPorts={selectedProcessor.ethernetPorts ?? 0}
               panelsPerPort={panelsPerPort}
               panelPowerW={effectivePanelPowerW}
+              panelOperatingPowerW={cfg.PANEL_OPERATING_POWER_W}
+              panelMaxPowerW={cfg.PANEL_MAX_POWER_W}
               powerSizingMode={powerSizingMode}
               powerMaxWatts={powerMaxWatts}
+              cableEntry={cableEntry}
             />
           </Suspense>
           <button
@@ -252,37 +333,30 @@ export default function App() {
           >
             PDF
           </button>
-          <button
-            onClick={handleNew}
-            className="flex items-center gap-1 text-xs px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            <FilePlus size={13} /> New
-          </button>
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 font-medium"
-          >
-            <Save size={13} /> Save
-          </button>
-          <button
-            onClick={() => setShowSidebar((s) => !s)}
-            className="text-xs px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
-            Projects{projects.length > 0 ? ` (${projects.length})` : ""}
-          </button>
+
+          <ProjectDropdown
+            projectName={meta.name}
+            isDirty={isDirty}
+            projects={projects}
+            onSave={handleSave}
+            onSaveAs={handleSaveAs}
+            onNew={handleNew}
+            onLoad={handleLoad}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
+          />
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-4 flex gap-4">
-        {/* Main content */}
-        <main className="flex-1 min-w-0 space-y-4">
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        <main className="space-y-4">
           <InputSection
             input={input}
             meta={meta}
             activePanel={activePanel}
-            onPanelChange={setActivePanel}
-            onInputChange={setInput}
-            onMetaChange={setMeta}
+            onPanelChange={(p) => { setActivePanel(p); markDirty(); }}
+            onInputChange={(i) => { setInput(i); markDirty(); }}
+            onMetaChange={(m) => { setMeta(m); markDirty(); }}
             darkMode={darkMode}
             onDarkToggle={() => setDarkMode((d) => !d)}
           />
@@ -293,7 +367,7 @@ export default function App() {
               overrideState={overrideState}
               processorId={processorId}
               powerSizingMode={powerSizingMode}
-              onPowerSizingModeChange={setPowerSizingMode}
+              onPowerSizingModeChange={(m) => { setPowerSizingMode(m); markDirty(); }}
             />
           )}
 
@@ -302,19 +376,19 @@ export default function App() {
               calc={calc}
               overrideState={overrideState}
               processorId={processorId}
-              onProcessorChange={setProcessorId}
+              onProcessorChange={(id) => { setProcessorId(id); markDirty(); }}
               routingMode={routingMode}
               cableEntry={cableEntry}
               dataPortSequences={dataPortSequences}
               powerChainSequences={powerChainSequences}
               powerMaxWatts={powerMaxWatts}
-              onRoutingModeChange={setRoutingMode}
-              onCableEntryChange={setCableEntry}
-              onDataPortSequencesChange={setDataPortSequences}
-              onPowerChainSequencesChange={setPowerChainSequences}
-              onPowerMaxWattsChange={setPowerMaxWatts}
+              onRoutingModeChange={(m) => { setRoutingMode(m); markDirty(); }}
+              onCableEntryChange={(e) => { setCableEntry(e); markDirty(); }}
+              onDataPortSequencesChange={(s) => { setDataPortSequences(s); markDirty(); }}
+              onPowerChainSequencesChange={(s) => { setPowerChainSequences(s); markDirty(); }}
+              onPowerMaxWattsChange={(w) => { setPowerMaxWatts(w); markDirty(); }}
               powerSizingMode={powerSizingMode}
-              onPowerSizingModeChange={setPowerSizingMode}
+              onPowerSizingModeChange={(m) => { setPowerSizingMode(m); markDirty(); }}
               activePanel={activePanel}
             />
           )}
@@ -325,43 +399,146 @@ export default function App() {
               rows={input.rows}
               blankCells={blankCells}
               chains={chains}
-              onBlankCellsChange={setBlankCells}
-              onChainsChange={setChains}
+              onBlankCellsChange={(c) => { setBlankCells(c); markDirty(); }}
+              onChainsChange={(c) => { setChains(c); markDirty(); }}
             />
           )}
         </main>
-
-        {/* Saved projects sidebar */}
-        {showSidebar && (
-          <aside className="w-56 shrink-0">
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-3 sticky top-16">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                Saved Projects
-              </h3>
-              <SaveSidebar
-                projects={projects}
-                onLoad={handleLoad}
-                onDelete={handleDelete}
-                onDuplicate={handleDuplicate}
-              />
-            </div>
-          </aside>
-        )}
       </div>
+
+      {/* Name prompt modal */}
+      {pendingNameAction && (
+        <NamePromptModal
+          initial={pendingNameAction === "saveas" ? meta.name : ""}
+          required={pendingNameAction === "saveas"}
+          onConfirm={handleNameConfirm}
+          onSkip={pendingNameAction === "save" ? handleNameSkip : undefined}
+          onCancel={() => setPendingNameAction(null)}
+        />
+      )}
+
+      {/* New project confirmation modal */}
+      {showNewConfirm && (
+        <NewProjectConfirmModal
+          onSave={handleNewSaveFirst}
+          onDiscard={doNew}
+          onCancel={() => setShowNewConfirm(false)}
+        />
+      )}
 
       {showPdfModal && (
         <Suspense fallback={null}>
-        <ClientPdfModal
-          meta={meta}
-          calc={calc}
-          overrides={overrideState.overrides}
-          blankCells={blankCells}
-          chains={chains}
-          companyName={CONFIG.COMPANY_NAME}
-          onClose={() => setShowPdfModal(false)}
-        />
+          <ClientPdfModal
+            meta={meta}
+            calc={calc}
+            overrides={overrideState.overrides}
+            blankCells={blankCells}
+            chains={chains}
+            companyName={CONFIG.COMPANY_NAME}
+            onClose={() => setShowPdfModal(false)}
+          />
         </Suspense>
       )}
+    </div>
+  );
+}
+
+// ── Inline modals ─────────────────────────────────────────────────────────────
+
+function NamePromptModal({
+  initial,
+  required,
+  onConfirm,
+  onSkip,
+  onCancel,
+}: {
+  initial: string;
+  required: boolean;
+  onConfirm: (name: string) => void;
+  onSkip?: () => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(initial);
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-96 space-y-4">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base">
+          {required ? "Name this copy" : "Name this project"}
+        </h3>
+        <input
+          autoFocus
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) onConfirm(name.trim()); }}
+          placeholder="e.g. Clivet Group Installer Show 26"
+          className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+        />
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+          >
+            Cancel
+          </button>
+          {!required && onSkip && (
+            <button
+              onClick={onSkip}
+              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+            >
+              Save unnamed
+            </button>
+          )}
+          <button
+            onClick={() => { if (name.trim()) onConfirm(name.trim()); }}
+            disabled={!name.trim()}
+            className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NewProjectConfirmModal({
+  onSave,
+  onDiscard,
+  onCancel,
+}: {
+  onSave: () => void;
+  onDiscard: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-96 space-y-4">
+        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base">Save before starting new?</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          You have unsaved changes. Save them before creating a new project?
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onDiscard}
+            className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+          >
+            Discard
+          </button>
+          <button
+            onClick={onSave}
+            className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Save
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

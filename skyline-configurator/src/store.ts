@@ -21,6 +21,7 @@ export interface ScreenInputState {
 export interface SavedProject {
   id: string;
   savedAt: string;
+  lastOpenedAt?: string;
   meta: ProjectMeta;
   input: ScreenInputState;
   overrides: Overrides;
@@ -57,6 +58,13 @@ export function listProjects(): SavedProject[] {
 export function saveProject(project: SavedProject): void {
   const all = listProjects().filter((p) => p.id !== project.id);
   all.unshift(project);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+}
+
+export function touchProjectLastOpened(id: string): void {
+  const all = listProjects().map((p) =>
+    p.id === id ? { ...p, lastOpenedAt: new Date().toISOString() } : p
+  );
   localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
 }
 

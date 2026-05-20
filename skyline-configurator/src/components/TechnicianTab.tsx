@@ -273,7 +273,7 @@ export function TechnicianTab({
               <button
                 key={m}
                 onClick={() => onPowerSizingModeChange(m)}
-                title={m === "operating" ? "120 W/panel — typical mixed content" : "180 W/panel — full white, worst case"}
+                title={m === "operating" ? `${activePanel.operatingPowerW} W/panel — typical mixed content` : `${activePanel.maxPowerW} W/panel — full white, worst case`}
                 className={`px-2.5 py-1 rounded transition-colors ${
                   powerSizingMode === m
                     ? m === "max"
@@ -287,32 +287,68 @@ export function TechnicianTab({
             ))}
           </div>
         </div>
-        <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
-          <TechStat label={`Total power (${powerSizingMode})`}>
-            <EditableField fieldKey="pow_totalWatts" auto={power.totalWatts} overrideState={overrideState} format={(v) => `${Math.round(Number(v))} W`} />
-          </TechStat>
-          <TechStat label="Amps at 240V">
-            <EditableField fieldKey="pow_amps" auto={power.amps} overrideState={overrideState} format={fmtF3} unit="A" />
-          </TechStat>
-          <TechStat label="13A circuits">
-            <EditableField fieldKey="pow_shukoCircuits" auto={power.circuits} overrideState={overrideState} format={fmtInt} />
-            <span className="text-xs text-gray-400 ml-1">
-              (ceil({Math.round(resolve("pow_totalWatts", power.totalWatts, overrides) as number)} ÷ 2496)
-            </span>
-          </TechStat>
-          <TechStat label="Data lines">
-            <EditableField fieldKey="pow_dataLines" auto={power.dataLines} overrideState={overrideState} format={fmtInt} />
-            <span className="text-xs text-gray-400 ml-1">
-              (ceil({dimensions.activePanels} ÷ 13))
-            </span>
-          </TechStat>
-          <TechStat label="Data links (UTP)">
-            <EditableField fieldKey="pow_utpData" auto={power.utpDataCables} overrideState={overrideState} format={fmtInt} />
-          </TechStat>
-        </div>
-        <div className="mx-4 mb-4 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded text-xs text-gray-500 dark:text-gray-400 font-mono">
-          {dimensions.activePanels} panels × {powerSizingMode === "max" ? activePanel.maxPowerW : activePanel.operatingPowerW} W ({powerSizingMode}) = {power.totalWatts} W ÷ 240 V = {power.amps.toFixed(3)} A
-        </div>
+        {(() => {
+          const panelPowerW = powerSizingMode === "max" ? activePanel.maxPowerW : activePanel.operatingPowerW;
+
+          // Data routing stats from drawn sequences
+          const populatedDataChains = Object.values(dataPortSequences).filter((c) => c.length > 0);
+          const hasDrawnData = populatedDataChains.length > 0;
+          const dataStarts = hasDrawnData
+            ? populatedDataChains.length
+            : Math.ceil(dimensions.activePanels / Math.max(1, panelsPerPort));
+          const dataLinks = hasDrawnData
+            ? populatedDataChains.reduce((sum, c) => sum + Math.max(0, c.length - 1), 0)
+            : Math.max(0, dimensions.activePanels - dataStarts);
+
+          // Power chain stats from drawn sequences
+          const populatedPowerChains = Object.values(powerChainSequences).filter((c) => c.length > 0);
+          const hasDrawnPower = populatedPowerChains.length > 0;
+          const panelsPerPowerChain = Math.max(1, Math.floor(powerMaxWatts / panelPowerW));
+          const powerStarts = hasDrawnPower
+            ? populatedPowerChains.length
+            : Math.ceil(dimensions.activePanels / panelsPerPowerChain);
+          const powerLinks = hasDrawnPower
+            ? populatedPowerChains.reduce((sum, c) => sum + Math.max(0, c.length - 1), 0)
+            : Math.max(0, dimensions.activePanels - powerStarts);
+
+          const estimated = !hasDrawnData || !hasDrawnPower;
+
+          return (
+            <>
+              <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+                <TechStat label={`Total power (${powerSizingMode})`}>
+                  <EditableField fieldKey="pow_totalWatts" auto={power.totalWatts} overrideState={overrideState} format={(v) => `${Math.round(Number(v))} W`} />
+                </TechStat>
+                <TechStat label="Amps at 240V">
+                  <EditableField fieldKey="pow_amps" auto={power.amps} overrideState={overrideState} format={fmtF3} unit="A" />
+                </TechStat>
+                <TechStat label="13A circuits">
+                  <EditableField fieldKey="pow_shukoCircuits" auto={power.circuits} overrideState={overrideState} format={fmtInt} />
+                </TechStat>
+                <TechStat label={hasDrawnData ? "Data starts" : "Data starts (est.)"}>
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{dataStarts}</span>
+                </TechStat>
+                <TechStat label={hasDrawnData ? "Data links" : "Data links (est.)"}>
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{dataLinks}</span>
+                </TechStat>
+                <TechStat label={hasDrawnPower ? "Power starts" : "Power starts (est.)"}>
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{powerStarts}</span>
+                </TechStat>
+                <TechStat label={hasDrawnPower ? "Power links" : "Power links (est.)"}>
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{powerLinks}</span>
+                </TechStat>
+              </div>
+              <div className="mx-4 mb-4 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded text-xs text-gray-500 dark:text-gray-400 font-mono">
+                {dimensions.activePanels} panels × {panelPowerW} W ({powerSizingMode}) = {power.totalWatts} W ÷ 240 V = {power.amps.toFixed(3)} A
+              </div>
+              {estimated && (
+                <div className="mx-4 mb-4 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded text-xs text-blue-700 dark:text-blue-300">
+                  Estimated — draw data routing in the Screen Layout section to refine these values
+                </div>
+              )}
+            </>
+          );
+        })()}
       </section>
 
       {/* Content spec */}
