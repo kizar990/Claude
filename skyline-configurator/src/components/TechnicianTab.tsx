@@ -30,6 +30,8 @@ interface Props {
   onDataPortSequencesChange: (s: Record<string, number[]>) => void;
   onPowerChainSequencesChange: (s: Record<string, number[]>) => void;
   onPowerMaxWattsChange: (w: number) => void;
+  powerSizingMode: "operating" | "max";
+  onPowerSizingModeChange: (m: "operating" | "max") => void;
 }
 
 export function TechnicianTab({
@@ -47,6 +49,8 @@ export function TechnicianTab({
   onDataPortSequencesChange,
   onPowerChainSequencesChange,
   onPowerMaxWattsChange,
+  powerSizingMode,
+  onPowerSizingModeChange,
 }: Props) {
   const { dimensions, materials, power, processor } = calc;
   const { overrides, resetAll } = overrideState;
@@ -166,7 +170,9 @@ export function TechnicianTab({
               activePanels={dimensions.activePanels}
               numPorts={selectedProcessor.ethernetPorts ?? 0}
               panelsPerPort={panelsPerPort}
-              panelPowerW={CONFIG.PANEL_POWER_W}
+              panelPowerW={powerSizingMode === "max" ? CONFIG.PANEL_MAX_POWER_W : CONFIG.PANEL_OPERATING_POWER_W}
+              powerSizingMode={powerSizingMode}
+              onPowerSizingModeChange={onPowerSizingModeChange}
               routingMode={routingMode}
               cableEntry={cableEntry}
               dataPortSequences={dataPortSequences}
@@ -256,9 +262,30 @@ export function TechnicianTab({
 
       {/* Power & cabling */}
       <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-        <SectionHeader title="Power & Cabling" />
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2 flex-wrap">
+          <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Power &amp; Cabling</span>
+          <div className="flex items-center gap-1 text-xs">
+            <span className="text-gray-500 dark:text-gray-400 mr-1">Sizing:</span>
+            {(["operating", "max"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => onPowerSizingModeChange(m)}
+                title={m === "operating" ? "120 W/panel — typical mixed content" : "180 W/panel — full white, worst case"}
+                className={`px-2.5 py-1 rounded transition-colors ${
+                  powerSizingMode === m
+                    ? m === "max"
+                      ? "bg-amber-500 text-white font-medium"
+                      : "bg-green-600 text-white font-medium"
+                    : "border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                }`}
+              >
+                {m === "operating" ? "Operating" : "Max"}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
-          <TechStat label="Total power">
+          <TechStat label={`Total power (${powerSizingMode})`}>
             <EditableField fieldKey="pow_totalWatts" auto={power.totalWatts} overrideState={overrideState} format={(v) => `${Math.round(Number(v))} W`} />
           </TechStat>
           <TechStat label="Amps at 240V">
@@ -281,7 +308,7 @@ export function TechnicianTab({
           </TechStat>
         </div>
         <div className="mx-4 mb-4 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded text-xs text-gray-500 dark:text-gray-400 font-mono">
-          {dimensions.activePanels} panels × 120 W = {power.totalWatts} W ÷ 240 V = {power.amps.toFixed(3)} A
+          {dimensions.activePanels} panels × {powerSizingMode === "max" ? CONFIG.PANEL_MAX_POWER_W : CONFIG.PANEL_OPERATING_POWER_W} W ({powerSizingMode}) = {power.totalWatts} W ÷ 240 V = {power.amps.toFixed(3)} A
         </div>
       </section>
 

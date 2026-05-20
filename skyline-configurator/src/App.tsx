@@ -55,6 +55,7 @@ export default function App() {
   const [dataPortSequences, setDataPortSequences] = useState<Record<string, number[]>>({});
   const [powerChainSequences, setPowerChainSequences] = useState<Record<string, number[]>>({});
   const [powerMaxWatts, setPowerMaxWatts] = useState(2400);
+  const [powerSizingMode, setPowerSizingMode] = useState<"operating" | "max">("operating");
 
   const overrideState = useOverrides();
 
@@ -64,9 +65,13 @@ export default function App() {
 
   const cfg = useMemo(() => configFromPanelSize(panelW, panelH), [panelW, panelH]);
 
+  const effectivePanelPowerW = powerSizingMode === "max"
+    ? CONFIG.PANEL_MAX_POWER_W
+    : CONFIG.PANEL_OPERATING_POWER_W;
+
   const calc = useMemo(
-    () => calcAll({ ...input, blankPanels: input.blankPanels + blankCells.length }, cfg, processorId),
-    [input, blankCells, cfg, processorId]
+    () => calcAll({ ...input, blankPanels: input.blankPanels + blankCells.length }, cfg, processorId, effectivePanelPowerW),
+    [input, blankCells, cfg, processorId, effectivePanelPowerW]
   );
 
   const selectedProcessor = useMemo(
@@ -99,6 +104,7 @@ export default function App() {
       dataPortSequences,
       powerChainSequences,
       powerMaxWatts,
+      powerSizingMode,
     };
     saveProject(project);
     setProjects(listProjects());
@@ -118,6 +124,7 @@ export default function App() {
     setDataPortSequences(p.dataPortSequences ?? {});
     setPowerChainSequences(p.powerChainSequences ?? {});
     setPowerMaxWatts(p.powerMaxWatts ?? 2400);
+    setPowerSizingMode(p.powerSizingMode ?? "operating");
     overrideState.resetAll();
     setTimeout(() => {
       Object.entries(p.overrides).forEach(([k, v]) => overrideState.set(k, v));
@@ -148,6 +155,7 @@ export default function App() {
     setBlankCells([]);
     setChains([]);
     setProcessorId(PROCESSORS[0].id);
+    setPowerSizingMode("operating");
     overrideState.resetAll();
   }
 
@@ -219,7 +227,8 @@ export default function App() {
               powerChainSequences={powerChainSequences}
               numPorts={selectedProcessor.ethernetPorts ?? 0}
               panelsPerPort={panelsPerPort}
-              panelPowerW={CONFIG.PANEL_POWER_W}
+              panelPowerW={effectivePanelPowerW}
+              powerSizingMode={powerSizingMode}
               powerMaxWatts={powerMaxWatts}
             />
           </Suspense>
@@ -269,7 +278,13 @@ export default function App() {
           />
 
           {tab === "designer" && (
-            <DesignerTab calc={calc} overrideState={overrideState} processorId={processorId} />
+            <DesignerTab
+              calc={calc}
+              overrideState={overrideState}
+              processorId={processorId}
+              powerSizingMode={powerSizingMode}
+              onPowerSizingModeChange={setPowerSizingMode}
+            />
           )}
 
           {tab === "technician" && techMode && (
@@ -288,6 +303,8 @@ export default function App() {
               onDataPortSequencesChange={setDataPortSequences}
               onPowerChainSequencesChange={setPowerChainSequences}
               onPowerMaxWattsChange={setPowerMaxWatts}
+              powerSizingMode={powerSizingMode}
+              onPowerSizingModeChange={setPowerSizingMode}
             />
           )}
 

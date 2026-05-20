@@ -293,9 +293,10 @@ interface DocProps {
   panelsPerPort?: number;
   panelPowerW?: number;
   powerMaxWatts?: number;
+  powerSizingMode?: "operating" | "max";
 }
 
-function TechDocument({ meta, calc, overrides, blankCells, chains, dataPortSequences, powerChainSequences, numPorts, panelsPerPort, panelPowerW, powerMaxWatts }: DocProps) {
+function TechDocument({ meta, calc, overrides, blankCells, chains, dataPortSequences, powerChainSequences, numPorts, panelsPerPort, panelPowerW, powerMaxWatts, powerSizingMode }: DocProps) {
   const { dimensions, materials, power, processor } = calc;
   const r = <T extends string | number>(key: string, auto: T): T =>
     resolve(key, auto, overrides) as T;
@@ -501,7 +502,7 @@ function TechDocument({ meta, calc, overrides, blankCells, chains, dataPortSeque
           <View style={s.header}>
             <View>
               <Text style={s.jobTitle}>{meta.name || "LED Wall Job"} — Power Routing</Text>
-              <Text style={s.subTitle}>Front view · {columns} × {rows} panels · {panelPowerW ?? CONFIG.PANEL_POWER_W} W/panel</Text>
+              <Text style={s.subTitle}>Front view · {columns} × {rows} panels · {panelPowerW ?? CONFIG.PANEL_OPERATING_POWER_W} W/panel ({powerSizingMode ?? "operating"})</Text>
             </View>
             <View style={s.metaRight}>
               {meta.jobNumber ? <Text style={s.metaLine}>Job: {meta.jobNumber}</Text> : null}
@@ -524,7 +525,7 @@ function TechDocument({ meta, calc, overrides, blankCells, chains, dataPortSeque
             {Object.entries(powerChainSequences!).filter(([, v]) => v.length > 0).map(([k]) => {
               const num = parseInt(k, 10);
               const color = CHAIN_COLORS[(num - 1) % CHAIN_COLORS.length];
-              const pw = panelPowerW ?? CONFIG.PANEL_POWER_W;
+              const pw = panelPowerW ?? CONFIG.PANEL_OPERATING_POWER_W;
               const count = powerChainSequences![k].length;
               return (
                 <View key={k} style={s.legendItem}>
@@ -540,7 +541,7 @@ function TechDocument({ meta, calc, overrides, blankCells, chains, dataPortSeque
             <Text style={s.summaryHead}>CHAIN SUMMARY</Text>
             {Object.entries(powerChainSequences!).filter(([, v]) => v.length > 0).map(([k]) => {
               const num = parseInt(k, 10);
-              const pw = panelPowerW ?? CONFIG.PANEL_POWER_W;
+              const pw = panelPowerW ?? CONFIG.PANEL_OPERATING_POWER_W;
               const maxW = powerMaxWatts ?? 2400;
               const count = powerChainSequences![k].length;
               const watts = count * pw;
@@ -556,9 +557,9 @@ function TechDocument({ meta, calc, overrides, blankCells, chains, dataPortSeque
               );
             })}
             <View style={[s.summaryRow, { borderBottomWidth: 0 }]}>
-              <Text style={s.summaryLabel}>Total power load</Text>
+              <Text style={s.summaryLabel}>Total power load ({powerSizingMode ?? "operating"})</Text>
               <Text style={s.summaryVal}>
-                {Object.values(powerChainSequences!).flat().length * (panelPowerW ?? CONFIG.PANEL_POWER_W)} W across {Object.values(powerChainSequences!).filter((v) => v.length > 0).length} chains
+                {Object.values(powerChainSequences!).flat().length * (panelPowerW ?? CONFIG.PANEL_OPERATING_POWER_W)} W across {Object.values(powerChainSequences!).filter((v) => v.length > 0).length} chains
               </Text>
             </View>
           </View>
@@ -574,7 +575,7 @@ interface ButtonProps extends DocProps {
   processorId?: string;
 }
 
-export function TechPdfDownloadButton({ meta, calc, overrides, blankCells, chains, dataPortSequences, powerChainSequences, numPorts, panelsPerPort, panelPowerW, powerMaxWatts }: ButtonProps) {
+export function TechPdfDownloadButton({ meta, calc, overrides, blankCells, chains, dataPortSequences, powerChainSequences, numPorts, panelsPerPort, panelPowerW, powerMaxWatts, powerSizingMode }: ButtonProps) {
   const slug = [meta.jobNumber, meta.name].filter(Boolean).join("-").replace(/\s+/g, "-") || "tech-sheet";
   const fileName = `tech-sheet-${slug}.pdf`;
 
@@ -593,6 +594,7 @@ export function TechPdfDownloadButton({ meta, calc, overrides, blankCells, chain
           panelsPerPort={panelsPerPort}
           panelPowerW={panelPowerW}
           powerMaxWatts={powerMaxWatts}
+          powerSizingMode={powerSizingMode}
         />
       }
       fileName={fileName}

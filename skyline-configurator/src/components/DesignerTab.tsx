@@ -13,9 +13,11 @@ interface Props {
   calc: FullConfig;
   overrideState: OverrideState;
   processorId: string;
+  powerSizingMode: "operating" | "max";
+  onPowerSizingModeChange: (m: "operating" | "max") => void;
 }
 
-export function DesignerTab({ calc, overrideState, processorId }: Props) {
+export function DesignerTab({ calc, overrideState, processorId, powerSizingMode, onPowerSizingModeChange }: Props) {
   const { dimensions, power, processor, contentSpec } = calc;
   const { resetAll, overrides } = overrideState;
   const anyOverride = Object.keys(overrides).length > 0;
@@ -144,11 +146,29 @@ export function DesignerTab({ calc, overrideState, processorId }: Props) {
 
       {/* Power summary */}
       <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2 flex-wrap">
           <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">Power Requirements</h3>
+          <div className="flex items-center gap-1 text-xs">
+            <span className="text-gray-500 dark:text-gray-400 mr-1">Power sizing:</span>
+            {(["operating", "max"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => onPowerSizingModeChange(m)}
+                className={`px-2.5 py-1 rounded transition-colors ${
+                  powerSizingMode === m
+                    ? m === "max"
+                      ? "bg-amber-500 text-white font-medium"
+                      : "bg-green-600 text-white font-medium"
+                    : "border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                }`}
+              >
+                {m === "operating" ? "Operating" : "Max"}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="p-4 grid grid-cols-4 gap-4">
-          <Stat label="Total draw">
+          <Stat label={`Total draw (${powerSizingMode})`}>
             <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
               {Math.round(resolve("pow_totalWatts", power.totalWatts, overrides) as number)} W
             </span>

@@ -121,8 +121,8 @@ export function calcMaterials(activePanels: number, cfg: Config = CONFIG): Mater
   };
 }
 
-export function calcPower(activePanels: number, cfg: Config = CONFIG): PowerSpec {
-  const totalWatts = activePanels * cfg.PANEL_POWER_W;
+export function calcPower(activePanels: number, cfg: Config = CONFIG, panelPowerOverride?: number): PowerSpec {
+  const totalWatts = activePanels * (panelPowerOverride ?? cfg.PANEL_OPERATING_POWER_W);
   const amps = totalWatts / cfg.VOLTAGE;
   const circuits = Math.ceil(totalWatts / cfg.CIRCUIT_MAX_W);
   const dataLines = Math.ceil(activePanels / cfg.PANELS_PER_DATA_LINE);
@@ -278,11 +278,12 @@ export function calcProcessorSufficiency(
 export function calcAll(
   input: ScreenInput,
   cfg: Config = CONFIG,
-  processorId?: string
+  processorId?: string,
+  panelPowerOverride?: number
 ): FullConfig {
   const dimensions = calcDimensions(input, cfg);
   const materials = calcMaterials(dimensions.activePanels, cfg);
-  const power = calcPower(dimensions.activePanels, cfg);
+  const power = calcPower(dimensions.activePanels, cfg, panelPowerOverride);
   const processor = processorId
     ? calcProcessorSufficiency(dimensions.pixelsW, dimensions.pixelsH, dimensions.activePanels, processorId, cfg)
     : calcProcessorFromDimensions(dimensions.pixelsW, dimensions.pixelsH, cfg);

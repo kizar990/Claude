@@ -38,6 +38,8 @@ interface Props {
   numPorts: number;
   panelsPerPort: number;
   panelPowerW: number;
+  powerSizingMode: "operating" | "max";
+  onPowerSizingModeChange: (m: "operating" | "max") => void;
   routingMode: "layout" | "data" | "power";
   cableEntry: EntryEdge;
   dataPortSequences: Record<string, number[]>;
@@ -70,6 +72,8 @@ export function CableRoutingGrid({
   numPorts,
   panelsPerPort,
   panelPowerW,
+  powerSizingMode,
+  onPowerSizingModeChange,
   routingMode,
   cableEntry,
   dataPortSequences,
@@ -908,21 +912,43 @@ export function CableRoutingGrid({
       {/* ── Chain summary (power mode) ────────────────────────────────────── */}
       {routingMode === "power" && (
         <div className="text-xs space-y-1 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+          <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+            <span className="text-gray-500 dark:text-gray-400">Power sizing:</span>
+            <div className="flex gap-1">
+              {(["operating", "max"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => onPowerSizingModeChange(m)}
+                  title={m === "operating" ? `${panelPowerW} W/panel — typical content` : `${panelPowerW} W/panel — full white`}
+                  className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                    powerSizingMode === m
+                      ? m === "max"
+                        ? "bg-amber-500 text-white font-medium"
+                        : "bg-green-600 text-white font-medium"
+                      : "border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  {m === "operating" ? "Operating" : "Max"}
+                </button>
+              ))}
+            </div>
+          </div>
           {Array.from({ length: numChains }, (_, i) => i + 1).map((ch) => {
             const color = CHAIN_COLORS[(ch - 1) % CHAIN_COLORS.length];
             const count = (powerChainSequences[String(ch)] ?? []).length;
             const watts = count * panelPowerW;
+            const overBudget = watts > powerMaxWatts;
             return (
               <div key={ch} className="flex items-center gap-2">
                 <span style={{ color }} className="font-bold text-base leading-none">●</span>
-                <span className="text-gray-700 dark:text-gray-300">
-                  Chain {ch}: {count} panels · {watts} W
+                <span className={overBudget ? "text-red-600 dark:text-red-400 font-medium" : "text-gray-700 dark:text-gray-300"}>
+                  Chain {ch}: {count} panels · {watts} W{overBudget ? " ⚠ over budget" : ""}
                 </span>
               </div>
             );
           })}
           <div className="pt-1 border-t border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
-            Total: {assignedChainPanels} panels · {totalChainWatts} W
+            Total: {assignedChainPanels} panels · {totalChainWatts} W ({powerSizingMode})
           </div>
         </div>
       )}

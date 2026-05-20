@@ -5,7 +5,8 @@ export const CONFIG = {
   PANEL_PIXELS_H: 256,
   PIXEL_PITCH: "P1.9",
   PANEL_WEIGHT_KG: 10,
-  PANEL_POWER_W: 120,
+  PANEL_OPERATING_POWER_W: 120,
+  PANEL_MAX_POWER_W: 180,
   VOLTAGE: 240,
   PANELS_PER_DATA_LINE: 13,
   // 13A circuit at 240V with 0.8 safety margin: 240 × 13 × 0.8 = 2496W

@@ -32,6 +32,7 @@ export interface SavedProject {
   dataPortSequences?: Record<string, number[]>;  // port num as string key → ordered panel flat-indices
   powerChainSequences?: Record<string, number[]>;
   powerMaxWatts?: number;
+  powerSizingMode?: "operating" | "max";
 }
 
 export interface ChainData {

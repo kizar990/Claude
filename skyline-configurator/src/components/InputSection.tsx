@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Settings } from "lucide-react";
+import { Settings, Info } from "lucide-react";
 import { CONFIG } from "../config";
 import { metresToInput, pixelsToInput } from "../calculations";
 import type { ScreenInputState, ProjectMeta } from "../store";
+import { PanelInfoModal } from "./PanelInfoModal";
 
 type InputMode = "panels" | "metres" | "pixels";
 
@@ -31,6 +32,7 @@ export function InputSection({
 }: Props) {
   const [mode, setMode] = useState<InputMode>("panels");
   const [showSettings, setShowSettings] = useState(false);
+  const [showPanelInfo, setShowPanelInfo] = useState(false);
 
   // Metres mode — initialise from current panel count × physical size
   const [mW, setMW] = useState(((input.columns * panelWidthMm) / 1000).toFixed(3));
@@ -99,6 +101,13 @@ export function InputSection({
             className="flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             <Settings size={13} /> Panel size
+          </button>
+          <button
+            onClick={() => setShowPanelInfo(true)}
+            title="View panel specifications"
+            className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+          >
+            <Info size={14} />
           </button>
         </div>
       </div>
@@ -281,6 +290,13 @@ export function InputSection({
             </span>
           )}
         </div>
+      )}
+      {showPanelInfo && (
+        <PanelInfoModal
+          panelWidthMm={panelWidthMm}
+          panelHeightMm={panelHeightMm}
+          onClose={() => setShowPanelInfo(false)}
+        />
       )}
     </div>
   );
