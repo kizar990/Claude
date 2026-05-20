@@ -77,6 +77,7 @@ export function TechnicianTab({
 
   const [customLines, setCustomLines] = useState<CustomLine[]>([]);
   const [showModal, setShowModal] = useState<boolean>(false);
+  const [numPickups, setNumPickups] = useState<number>(Math.max(1, dimensions.columns));
 
   function addCustomLine() {
     setCustomLines((prev) => [
@@ -360,6 +361,63 @@ export function TechnicianTab({
         })()}
       </section>
 
+      {/* Rigging */}
+      <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+        <SectionHeader title={`Rigging — ${T.structureType}`} />
+        <div className="p-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+            <TechStat label="Panel weight">
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                {Math.round(dimensions.activePanels * dimensions.panelWeightKg)} kg
+              </span>
+            </TechStat>
+            {profile.riggingSystem !== "modular" ? (
+              <>
+                <TechStat label={`${T.panelSupport}s`}>
+                  <input
+                    type="number"
+                    min={1}
+                    max={64}
+                    value={numPickups}
+                    onChange={(e) => setNumPickups(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-16 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-center bg-white dark:bg-gray-800 dark:text-gray-100"
+                  />
+                </TechStat>
+                <TechStat label={`kg per ${T.panelSupport}`}>
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    {Math.ceil((dimensions.activePanels * dimensions.panelWeightKg) / numPickups)} kg
+                  </span>
+                </TechStat>
+                <TechStat label="Motor class (est.)">
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    {motorClass(Math.ceil((dimensions.activePanels * dimensions.panelWeightKg) / numPickups))}
+                  </span>
+                </TechStat>
+              </>
+            ) : (
+              <>
+                <TechStat label={`${T.frameConnector}s`}>
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{dimensions.columns}</span>
+                </TechStat>
+                <TechStat label={`${T.panelSupport}s per col.`}>
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{dimensions.rows}</span>
+                </TechStat>
+                <TechStat label="kg per column">
+                  <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    {dimensions.columns > 0 ? Math.ceil((dimensions.activePanels * dimensions.panelWeightKg) / dimensions.columns) : 0} kg
+                  </span>
+                </TechStat>
+              </>
+            )}
+          </div>
+          {profile.riggingSystem !== "modular" && (
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Motor class uses 1.5× contingency on panel weight only — excludes structure, cabling, and dynamic loads. Always verify with a qualified rigger.
+            </p>
+          )}
+        </div>
+      </section>
+
       {/* Content spec */}
       <section className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
         <h3 className="font-semibold text-blue-900 dark:text-blue-200 text-sm mb-2">Content Specification</h3>
@@ -371,6 +429,15 @@ export function TechnicianTab({
       {showModal && <ProcessorInfoModal processor={selectedProcessor} onClose={() => setShowModal(false)} />}
     </div>
   );
+}
+
+function motorClass(kgPerPoint: number): string {
+  const swl = kgPerPoint * 1.5;
+  if (swl <= 250) return "250 kg";
+  if (swl <= 500) return "500 kg";
+  if (swl <= 1000) return "1 t";
+  if (swl <= 2000) return "2 t";
+  return "> 2 t";
 }
 
 function SectionHeader({ title }: { title: string }) {

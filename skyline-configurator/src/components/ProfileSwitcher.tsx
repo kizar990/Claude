@@ -10,6 +10,7 @@ import {
   fileToDataUrl,
   extractDominantColor,
 } from "../profiles";
+import { ProfileEditorModal } from "./ProfileEditorModal";
 
 interface Props {
   profiles: Profile[];
@@ -47,6 +48,8 @@ export { ProfileAvatar };
 export function ProfileSwitcher({ profiles, activeProfile, onSwitch, onProfilesChange }: Props) {
   const [open, setOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -164,12 +167,28 @@ export function ProfileSwitcher({ profiles, activeProfile, onSwitch, onProfilesC
               <Plus size={13} className="text-gray-400" /> Create new profile
             </button>
             <button
-              onClick={() => { /* Stage 4: full profile editor */ setOpen(false); }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-not-allowed"
-              title="Full profile editor — coming in a future update"
+              onClick={() => {
+                if (activeProfile.isBuiltIn) {
+                  // Duplicate built-in first, then edit the copy
+                  const dup = duplicateProfile(activeProfile.id);
+                  if (dup) {
+                    saveCustomProfile(dup);
+                    import("../profiles").then(({ loadProfiles }) => {
+                      onProfilesChange(loadProfiles());
+                      setEditingProfile(dup);
+                      setShowEditor(true);
+                    });
+                  }
+                } else {
+                  setEditingProfile(activeProfile);
+                  setShowEditor(true);
+                }
+                setOpen(false);
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              <Settings size={13} className="text-gray-300 dark:text-gray-600" /> Edit current profile
-              <span className="ml-auto text-xs text-gray-300 dark:text-gray-600">soon</span>
+              <Settings size={13} className="text-gray-400" />
+              {activeProfile.isBuiltIn ? "Copy & edit current profile" : "Edit current profile"}
             </button>
           </div>
         </div>
@@ -187,6 +206,22 @@ export function ProfileSwitcher({ profiles, activeProfile, onSwitch, onProfilesC
             setShowCreate(false);
           }}
           onCancel={() => setShowCreate(false)}
+        />
+      )}
+
+      {showEditor && editingProfile && (
+        <ProfileEditorModal
+          profile={editingProfile}
+          onSave={(updated) => {
+            saveCustomProfile(updated);
+            import("../profiles").then(({ loadProfiles }) => {
+              onProfilesChange(loadProfiles());
+              onSwitch(updated.id);
+            });
+            setShowEditor(false);
+            setEditingProfile(null);
+          }}
+          onCancel={() => { setShowEditor(false); setEditingProfile(null); }}
         />
       )}
     </div>
