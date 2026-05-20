@@ -1,20 +1,21 @@
 import { useState } from "react";
 import { Settings, Info } from "lucide-react";
+import { metresToInput } from "../calculations";
 import { CONFIG } from "../config";
-import { metresToInput, pixelsToInput } from "../calculations";
 import type { ScreenInputState, ProjectMeta } from "../store";
 import { PanelInfoModal } from "./PanelInfoModal";
+import { PanelPicker } from "./PanelPicker";
+import type { PanelSpec } from "../panels";
 
 type InputMode = "panels" | "metres" | "pixels";
 
 interface Props {
   input: ScreenInputState;
   meta: ProjectMeta;
-  panelWidthMm: number;
-  panelHeightMm: number;
+  activePanel: PanelSpec;
+  onPanelChange: (p: PanelSpec) => void;
   onInputChange: (i: ScreenInputState) => void;
   onMetaChange: (m: ProjectMeta) => void;
-  onPanelSizeChange: (w: number, h: number) => void;
   darkMode: boolean;
   onDarkToggle: () => void;
 }
@@ -22,36 +23,33 @@ interface Props {
 export function InputSection({
   input,
   meta,
-  panelWidthMm,
-  panelHeightMm,
+  activePanel,
+  onPanelChange,
   onInputChange,
   onMetaChange,
-  onPanelSizeChange,
   darkMode,
   onDarkToggle,
 }: Props) {
   const [mode, setMode] = useState<InputMode>("panels");
-  const [showSettings, setShowSettings] = useState(false);
+  const [showPanelPicker, setShowPanelPicker] = useState(false);
   const [showPanelInfo, setShowPanelInfo] = useState(false);
 
   // Metres mode — initialise from current panel count × physical size
-  const [mW, setMW] = useState(((input.columns * panelWidthMm) / 1000).toFixed(3));
-  const [mH, setMH] = useState(((input.rows * panelHeightMm) / 1000).toFixed(3));
+  const [mW, setMW] = useState(((input.columns * activePanel.widthMm) / 1000).toFixed(3));
+  const [mH, setMH] = useState(((input.rows * activePanel.heightMm) / 1000).toFixed(3));
 
   // Pixels mode
-  const [pxW, setPxW] = useState(String(input.columns * CONFIG.PANEL_PIXELS_W));
-  const [pxH, setPxH] = useState(String(input.rows * CONFIG.PANEL_PIXELS_H));
-
-  // Settings panel
-  const [settingsW, setSettingsW] = useState(String(panelWidthMm));
-  const [settingsH, setSettingsH] = useState(String(panelHeightMm));
+  // Note: pixelsToInput uses default CONFIG.PANEL_PIXELS_W/H for snapping.
+  // The snap display uses activePanel.pixelsW/H for display accuracy.
+  const [pxW, setPxW] = useState(String(input.columns * activePanel.pixelsW));
+  const [pxH, setPxH] = useState(String(input.rows * activePanel.pixelsH));
 
   function applyMetres() {
     const w = parseFloat(mW) || 0;
     const h = parseFloat(mH) || 0;
     if (w <= 0 || h <= 0) return;
-    const cfg = { ...CONFIG, PANEL_WIDTH_MM: panelWidthMm, PANEL_HEIGHT_MM: panelHeightMm };
-    const { input: snapped } = metresToInput(w, h, cfg);
+    const cfg = { ...CONFIG, PANEL_WIDTH_MM: activePanel.widthMm, PANEL_HEIGHT_MM: activePanel.heightMm };
+    const { input: snapped } = metresToInput(w, h, cfg as Parameters<typeof metresToInput>[2]);
     onInputChange({ ...snapped, blankPanels: input.blankPanels });
   }
 
@@ -59,28 +57,23 @@ export function InputSection({
     const w = parseInt(pxW) || 0;
     const h = parseInt(pxH) || 0;
     if (w <= 0 || h <= 0) return;
-    const { input: snapped } = pixelsToInput(w, h);
-    onInputChange({ ...snapped, blankPanels: input.blankPanels });
-  }
-
-  function applySettings() {
-    const w = parseFloat(settingsW) || panelWidthMm;
-    const h = parseFloat(settingsH) || panelHeightMm;
-    onPanelSizeChange(w, h);
-    setShowSettings(false);
+    // Snap using active panel pixel dimensions
+    const columns = Math.round(w / activePanel.pixelsW);
+    const rows = Math.round(h / activePanel.pixelsH);
+    onInputChange({ columns: Math.max(1, columns), rows: Math.max(1, rows), blankPanels: input.blankPanels });
   }
 
   // Metres snap delta: compare typed value against applied panel-snapped value
-  const snapDeltaW = input.columns * panelWidthMm - parseFloat(mW) * 1000;
-  const snapDeltaH = input.rows * panelHeightMm - parseFloat(mH) * 1000;
+  const snapDeltaW = input.columns * activePanel.widthMm - parseFloat(mW) * 1000;
+  const snapDeltaH = input.rows * activePanel.heightMm - parseFloat(mH) * 1000;
 
-  // Pixel snap delta: compute from typed value directly, NOT from applied input.columns
-  // This prevents false warnings when input hasn't been applied yet
-  const parsedPx = pixelsToInput(parseInt(pxW) || 0, parseInt(pxH) || 0);
-  const pxDeltaW = parsedPx.deltaW;
-  const pxDeltaH = parsedPx.deltaH;
-  const pxSnappedW = parsedPx.input.columns * CONFIG.PANEL_PIXELS_W;
-  const pxSnappedH = parsedPx.input.rows * CONFIG.PANEL_PIXELS_H;
+  // Pixel snap delta using active panel pixel dimensions
+  const parsedPxCols = Math.round((parseInt(pxW) || 0) / activePanel.pixelsW);
+  const parsedPxRows = Math.round((parseInt(pxH) || 0) / activePanel.pixelsH);
+  const pxSnappedW = parsedPxCols * activePanel.pixelsW;
+  const pxSnappedH = parsedPxRows * activePanel.pixelsH;
+  const pxDeltaW = pxSnappedW - (parseInt(pxW) || 0);
+  const pxDeltaH = pxSnappedH - (parseInt(pxH) || 0);
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 mb-4">
@@ -97,10 +90,11 @@ export function InputSection({
             {darkMode ? "☀ Light" : "☾ Dark"}
           </button>
           <button
-            onClick={() => setShowSettings((s) => !s)}
+            onClick={() => setShowPanelPicker(true)}
             className="flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
-            <Settings size={13} /> Panel size
+            <Settings size={13} />
+            <span className="max-w-32 truncate">{activePanel.name}</span>
           </button>
           <button
             onClick={() => setShowPanelInfo(true)}
@@ -111,37 +105,6 @@ export function InputSection({
           </button>
         </div>
       </div>
-
-      {/* Settings panel */}
-      {showSettings && (
-        <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-          <p className="text-xs font-medium text-amber-800 dark:text-amber-300 mb-2">
-            Override panel physical size (mm) — all calculations recalculate
-          </p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <label className="text-xs text-gray-600 dark:text-gray-400">Width mm</label>
-            <input
-              type="number"
-              value={settingsW}
-              onChange={(e) => setSettingsW(e.target.value)}
-              className="w-20 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 dark:text-gray-100"
-            />
-            <label className="text-xs text-gray-600 dark:text-gray-400">Height mm</label>
-            <input
-              type="number"
-              value={settingsH}
-              onChange={(e) => setSettingsH(e.target.value)}
-              className="w-20 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-800 dark:text-gray-100"
-            />
-            <button
-              onClick={applySettings}
-              className="text-xs px-3 py-1 bg-amber-500 text-white rounded hover:bg-amber-600"
-            >
-              Apply
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Project metadata */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
@@ -245,8 +208,8 @@ export function InputSection({
           </button>
           {(Math.abs(snapDeltaW) > 0.5 || Math.abs(snapDeltaH) > 0.5) && (
             <span className="text-xs text-amber-600 dark:text-amber-400">
-              Snapped to {(input.columns * panelWidthMm / 1000).toFixed(3)}m ×{" "}
-              {(input.rows * panelHeightMm / 1000).toFixed(3)}m
+              Snapped to {(input.columns * activePanel.widthMm / 1000).toFixed(3)}m ×{" "}
+              {(input.rows * activePanel.heightMm / 1000).toFixed(3)}m
               {Math.abs(snapDeltaW) > 0.5 && ` (ΔW ${snapDeltaW > 0 ? "+" : ""}${snapDeltaW.toFixed(0)}mm)`}
               {Math.abs(snapDeltaH) > 0.5 && ` (ΔH ${snapDeltaH > 0 ? "+" : ""}${snapDeltaH.toFixed(0)}mm)`}
             </span>
@@ -291,12 +254,16 @@ export function InputSection({
           )}
         </div>
       )}
-      {showPanelInfo && (
-        <PanelInfoModal
-          panelWidthMm={panelWidthMm}
-          panelHeightMm={panelHeightMm}
-          onClose={() => setShowPanelInfo(false)}
+
+      {showPanelPicker && (
+        <PanelPicker
+          activePanel={activePanel}
+          onSelect={(p) => { onPanelChange(p); setShowPanelPicker(false); }}
+          onClose={() => setShowPanelPicker(false)}
         />
+      )}
+      {showPanelInfo && (
+        <PanelInfoModal panel={activePanel} onClose={() => setShowPanelInfo(false)} />
       )}
     </div>
   );

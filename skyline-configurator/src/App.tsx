@@ -21,13 +21,14 @@ import {
   deleteProject,
   duplicateProject,
   defaultMeta,
-  configFromPanelSize,
+  configFromPanel,
   type ProjectMeta,
   type ScreenInputState,
   type SavedProject,
   type ChainData,
 } from "./store";
 import { CONFIG, PROCESSORS, computePanelsPerPort } from "./config";
+import { PRESET_PANELS, loadCustomPanels, type PanelSpec } from "./panels";
 
 type Tab = "designer" | "technician" | "render";
 
@@ -41,8 +42,7 @@ export default function App() {
   const [techMode, setTechMode] = useState(false);
   const [input, setInput] = useState<ScreenInputState>(DEFAULT_INPUT);
   const [meta, setMeta] = useState<ProjectMeta>(defaultMeta);
-  const [panelW, setPanelW] = useState<number>(CONFIG.PANEL_WIDTH_MM);
-  const [panelH, setPanelH] = useState<number>(CONFIG.PANEL_HEIGHT_MM);
+  const [activePanel, setActivePanel] = useState<PanelSpec>(PRESET_PANELS[0]);
   const [projects, setProjects] = useState<SavedProject[]>(() => listProjects());
   const [showSidebar, setShowSidebar] = useState(false);
   const [currentId, setCurrentId] = useState<string>(() => crypto.randomUUID());
@@ -63,11 +63,11 @@ export default function App() {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
-  const cfg = useMemo(() => configFromPanelSize(panelW, panelH), [panelW, panelH]);
+  const cfg = useMemo(() => configFromPanel(activePanel), [activePanel]);
 
   const effectivePanelPowerW = powerSizingMode === "max"
-    ? CONFIG.PANEL_MAX_POWER_W
-    : CONFIG.PANEL_OPERATING_POWER_W;
+    ? cfg.PANEL_MAX_POWER_W
+    : cfg.PANEL_OPERATING_POWER_W;
 
   const calc = useMemo(
     () => calcAll({ ...input, blankPanels: input.blankPanels + blankCells.length }, cfg, processorId, effectivePanelPowerW),
@@ -81,10 +81,10 @@ export default function App() {
   const panelsPerPort = useMemo(
     () => computePanelsPerPort(
       selectedProcessor.recommendedPerPortPixels ?? 0,
-      CONFIG.PANEL_PIXELS_W,
-      CONFIG.PANEL_PIXELS_H
+      cfg.PANEL_PIXELS_W,
+      cfg.PANEL_PIXELS_H
     ),
-    [selectedProcessor]
+    [selectedProcessor, cfg]
   );
 
   function handleSave() {
@@ -94,8 +94,9 @@ export default function App() {
       meta,
       input,
       overrides: overrideState.overrides,
-      panelWidthMm: panelW,
-      panelHeightMm: panelH,
+      panelWidthMm: activePanel.widthMm,   // backward compat
+      panelHeightMm: activePanel.heightMm, // backward compat
+      panelSpec: activePanel,
       blankCells,
       chains,
       processorId,
@@ -114,8 +115,22 @@ export default function App() {
     setCurrentId(p.id);
     setMeta(p.meta);
     setInput(p.input);
-    setPanelW(p.panelWidthMm);
-    setPanelH(p.panelHeightMm);
+    // Restore active panel
+    if (p.panelSpec) {
+      if (!p.panelSpec.isPreset) {
+        const libPanels = loadCustomPanels();
+        const libVersion = libPanels.find((lp) => lp.id === p.panelSpec!.id);
+        setActivePanel(libVersion ?? p.panelSpec);
+      } else {
+        setActivePanel(p.panelSpec);
+      }
+    } else {
+      // backward compat: find matching preset by dimensions
+      const found = PRESET_PANELS.find(
+        (panel) => panel.widthMm === p.panelWidthMm && panel.heightMm === p.panelHeightMm
+      );
+      setActivePanel(found ?? PRESET_PANELS[0]);
+    }
     setBlankCells(p.blankCells ?? []);
     setChains(p.chains ?? []);
     setProcessorId(p.processorId ?? PROCESSORS[0].id);
@@ -150,8 +165,7 @@ export default function App() {
     setCurrentId(crypto.randomUUID());
     setMeta(defaultMeta());
     setInput(DEFAULT_INPUT);
-    setPanelW(CONFIG.PANEL_WIDTH_MM);
-    setPanelH(CONFIG.PANEL_HEIGHT_MM);
+    setActivePanel(PRESET_PANELS[0]);
     setBlankCells([]);
     setChains([]);
     setProcessorId(PROCESSORS[0].id);
@@ -265,14 +279,10 @@ export default function App() {
           <InputSection
             input={input}
             meta={meta}
-            panelWidthMm={panelW}
-            panelHeightMm={panelH}
+            activePanel={activePanel}
+            onPanelChange={setActivePanel}
             onInputChange={setInput}
             onMetaChange={setMeta}
-            onPanelSizeChange={(w, h) => {
-              setPanelW(w);
-              setPanelH(h);
-            }}
             darkMode={darkMode}
             onDarkToggle={() => setDarkMode((d) => !d)}
           />
@@ -305,6 +315,7 @@ export default function App() {
               onPowerMaxWattsChange={setPowerMaxWatts}
               powerSizingMode={powerSizingMode}
               onPowerSizingModeChange={setPowerSizingMode}
+              activePanel={activePanel}
             />
           )}
 

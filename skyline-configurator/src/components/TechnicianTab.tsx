@@ -7,7 +7,8 @@ import { CableRoutingGrid } from "./CableRoutingGrid";
 import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
-import { PROCESSORS, CONFIG, computePanelsPerPort } from "../config";
+import { PROCESSORS, computePanelsPerPort } from "../config";
+import type { PanelSpec } from "../panels";
 
 interface CustomLine {
   id: string;
@@ -32,6 +33,7 @@ interface Props {
   onPowerMaxWattsChange: (w: number) => void;
   powerSizingMode: "operating" | "max";
   onPowerSizingModeChange: (m: "operating" | "max") => void;
+  activePanel: PanelSpec;
 }
 
 export function TechnicianTab({
@@ -51,6 +53,7 @@ export function TechnicianTab({
   onPowerMaxWattsChange,
   powerSizingMode,
   onPowerSizingModeChange,
+  activePanel,
 }: Props) {
   const { dimensions, materials, power, processor } = calc;
   const { overrides, resetAll } = overrideState;
@@ -59,8 +62,8 @@ export function TechnicianTab({
   const selectedProcessor = PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0];
   const panelsPerPort = computePanelsPerPort(
     selectedProcessor.recommendedPerPortPixels ?? 0,
-    CONFIG.PANEL_PIXELS_W,
-    CONFIG.PANEL_PIXELS_H
+    dimensions.panelPixelsW,
+    dimensions.panelPixelsH
   );
 
   const [customLines, setCustomLines] = useState<CustomLine[]>([]);
@@ -110,7 +113,7 @@ export function TechnicianTab({
           <TechStat label="Columns × Rows">
             <span className="font-mono text-sm">
               {dimensions.activePanels > 0
-                ? `${Math.round(resolve("pixelsW", dimensions.pixelsW, overrides) as number / CONFIG.PANEL_PIXELS_W)} × ${Math.round(resolve("pixelsH", dimensions.pixelsH, overrides) as number / CONFIG.PANEL_PIXELS_H)}`
+                ? `${Math.round(resolve("pixelsW", dimensions.pixelsW, overrides) as number / dimensions.panelPixelsW)} × ${Math.round(resolve("pixelsH", dimensions.pixelsH, overrides) as number / dimensions.panelPixelsH)}`
                 : "—"}
             </span>
           </TechStat>
@@ -129,7 +132,7 @@ export function TechnicianTab({
             </span>
           </TechStat>
           <TechStat label="Weight">
-            <EditableField fieldKey="totalWeight" auto={dimensions.activePanels * 10} overrideState={overrideState} format={(v) => `${Math.round(Number(v))} kg`} />
+            <EditableField fieldKey="totalWeight" auto={dimensions.activePanels * dimensions.panelWeightKg} overrideState={overrideState} format={(v) => `${Math.round(Number(v))} kg`} />
           </TechStat>
         </div>
         {/* Processor selector */}
@@ -160,17 +163,17 @@ export function TechnicianTab({
           <SectionHeader title="Screen Layout" />
           <div className="px-6 py-5">
             <CableRoutingGrid
-              columns={Math.round(dimensions.pixelsW / CONFIG.PANEL_PIXELS_W)}
-              rows={Math.round(dimensions.pixelsH / CONFIG.PANEL_PIXELS_H)}
+              columns={dimensions.columns}
+              rows={dimensions.rows}
               widthM={dimensions.widthM}
               heightM={dimensions.heightM}
-              panelWidthMm={CONFIG.PANEL_WIDTH_MM}
-              panelHeightMm={CONFIG.PANEL_HEIGHT_MM}
-              pixelPitch={CONFIG.PIXEL_PITCH}
+              panelWidthMm={dimensions.panelWidthMm}
+              panelHeightMm={dimensions.panelHeightMm}
+              pixelPitch={dimensions.pixelPitch}
               activePanels={dimensions.activePanels}
               numPorts={selectedProcessor.ethernetPorts ?? 0}
               panelsPerPort={panelsPerPort}
-              panelPowerW={powerSizingMode === "max" ? CONFIG.PANEL_MAX_POWER_W : CONFIG.PANEL_OPERATING_POWER_W}
+              panelPowerW={powerSizingMode === "max" ? activePanel.maxPowerW : activePanel.operatingPowerW}
               powerSizingMode={powerSizingMode}
               onPowerSizingModeChange={onPowerSizingModeChange}
               routingMode={routingMode}
@@ -308,7 +311,7 @@ export function TechnicianTab({
           </TechStat>
         </div>
         <div className="mx-4 mb-4 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded text-xs text-gray-500 dark:text-gray-400 font-mono">
-          {dimensions.activePanels} panels × {powerSizingMode === "max" ? CONFIG.PANEL_MAX_POWER_W : CONFIG.PANEL_OPERATING_POWER_W} W ({powerSizingMode}) = {power.totalWatts} W ÷ 240 V = {power.amps.toFixed(3)} A
+          {dimensions.activePanels} panels × {powerSizingMode === "max" ? activePanel.maxPowerW : activePanel.operatingPowerW} W ({powerSizingMode}) = {power.totalWatts} W ÷ 240 V = {power.amps.toFixed(3)} A
         </div>
       </section>
 

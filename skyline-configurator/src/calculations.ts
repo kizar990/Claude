@@ -16,6 +16,16 @@ export interface ScreenDimensions {
   aspectRatio: string;
   totalPanels: number;
   activePanels: number;
+  // per-panel info from cfg
+  columns: number;
+  rows: number;
+  panelWidthMm: number;
+  panelHeightMm: number;
+  panelPixelsW: number;
+  panelPixelsH: number;
+  pixelPitch: string;
+  panelWeightKg: number;
+  panelName: string;
 }
 
 export interface MaterialList {
@@ -95,6 +105,15 @@ export function calcDimensions(input: ScreenInput, cfg: Config = CONFIG): Screen
     aspectRatio,
     totalPanels,
     activePanels,
+    columns,
+    rows,
+    panelWidthMm: cfg.PANEL_WIDTH_MM,
+    panelHeightMm: cfg.PANEL_HEIGHT_MM,
+    panelPixelsW: cfg.PANEL_PIXELS_W,
+    panelPixelsH: cfg.PANEL_PIXELS_H,
+    pixelPitch: cfg.PIXEL_PITCH,
+    panelWeightKg: cfg.PANEL_WEIGHT_KG,
+    panelName: cfg.PRODUCT_DEFAULT,
   };
 }
 

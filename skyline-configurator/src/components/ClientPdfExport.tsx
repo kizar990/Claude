@@ -16,7 +16,6 @@ import type { FullConfig } from "../calculations";
 import type { ProjectMeta, ChainData } from "../store";
 import { resolve } from "../useOverrides";
 import type { Overrides } from "../useOverrides";
-import { CONFIG } from "../config";
 import { C, MARGIN_H, FOOTER_H, BrandHeader, BrandFooter } from "./PdfBranding";
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -264,8 +263,8 @@ export function ClientPdfDocument({
   const r = <T extends string | number>(key: string, auto: T) =>
     resolve(key, auto, overrides) as T;
 
-  const columns = Math.round(dimensions.pixelsW / CONFIG.PANEL_PIXELS_W);
-  const rows    = Math.round(dimensions.pixelsH / CONFIG.PANEL_PIXELS_H);
+  const columns = dimensions.columns;
+  const rows    = dimensions.rows;
   const today   = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
   const specRows: [string, string][] = [
@@ -275,7 +274,7 @@ export function ClientPdfDocument({
     ["Resolution",    `${r("pixelsW", dimensions.pixelsW)} × ${r("pixelsH", dimensions.pixelsH)} px`],
     ["Total panels",  String(r("totalPanels", dimensions.activePanels))],
     ["Total weight",  `${Math.round(Number(r("totalWeight", dimensions.activePanels * 10)))} kg`],
-    ["Pixel pitch",   CONFIG.PIXEL_PITCH],
+    ["Pixel pitch",   dimensions.pixelPitch],
     ["Processor",     processor.modelName],
   ];
 
@@ -427,7 +426,7 @@ export function ClientPdfDocument({
               large
             />
             <Text style={s.gridCaption}>
-              {columns} × {rows} panels  ·  {CONFIG.PANEL_WIDTH_MM} × {CONFIG.PANEL_HEIGHT_MM} mm per panel  ·  {CONFIG.PIXEL_PITCH}  ·  {dimensions.activePanels} panels total
+              {columns} × {rows} panels  ·  {dimensions.panelWidthMm} × {dimensions.panelHeightMm} mm per panel  ·  {dimensions.pixelPitch}  ·  {dimensions.activePanels} panels total
             </Text>
           </View>
 

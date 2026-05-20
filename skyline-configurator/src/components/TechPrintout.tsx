@@ -5,7 +5,6 @@ import type { ProjectMeta } from "../store";
 import type { ChainData } from "../store";
 import { resolve } from "../useOverrides";
 import type { Overrides } from "../useOverrides";
-import { CONFIG } from "../config";
 
 const CELL = 14;
 const CGAP = 1;
@@ -95,8 +94,8 @@ export function TechPrintButton({ meta, calc, overrides, blankCells, chains }: P
   const r = <T extends string | number>(key: string, auto: T): T =>
     resolve(key, auto, overrides) as T;
 
-  const columns = Math.round(dimensions.pixelsW / CONFIG.PANEL_PIXELS_W);
-  const rows = Math.round(dimensions.pixelsH / CONFIG.PANEL_PIXELS_H);
+  const columns = dimensions.columns;
+  const rows = dimensions.rows;
 
   const matItems: [string, number | string][] = [
     ["LED Flightcases", r("mat_ledFlightcases", materials.ledFlightcases)],

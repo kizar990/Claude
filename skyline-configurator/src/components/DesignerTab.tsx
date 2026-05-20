@@ -7,8 +7,7 @@ import { ScreenLayoutDiagram } from "./ScreenLayoutDiagram";
 import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
-import { CONFIG, PROCESSORS } from "../config";
-
+import { PROCESSORS } from "../config";
 interface Props {
   calc: FullConfig;
   overrideState: OverrideState;
@@ -106,7 +105,7 @@ export function DesignerTab({ calc, overrideState, processorId, powerSizingMode,
           <Stat label="Total weight">
             <EditableField
               fieldKey="totalWeight"
-              auto={dimensions.activePanels * 10}
+              auto={dimensions.activePanels * dimensions.panelWeightKg}
               overrideState={overrideState}
               format={fmtKg}
             />
@@ -131,13 +130,13 @@ export function DesignerTab({ calc, overrideState, processorId, powerSizingMode,
           </div>
           <div className="px-6 py-5">
             <ScreenLayoutDiagram
-              columns={Math.round(dimensions.pixelsW / CONFIG.PANEL_PIXELS_W)}
-              rows={Math.round(dimensions.pixelsH / CONFIG.PANEL_PIXELS_H)}
+              columns={dimensions.columns}
+              rows={dimensions.rows}
               widthM={dimensions.widthM}
               heightM={dimensions.heightM}
-              panelWidthMm={CONFIG.PANEL_WIDTH_MM}
-              panelHeightMm={CONFIG.PANEL_HEIGHT_MM}
-              pixelPitch={CONFIG.PIXEL_PITCH}
+              panelWidthMm={dimensions.panelWidthMm}
+              panelHeightMm={dimensions.panelHeightMm}
+              pixelPitch={dimensions.pixelPitch}
               activePanels={dimensions.activePanels}
             />
           </div>
@@ -186,7 +185,7 @@ export function DesignerTab({ calc, overrideState, processorId, powerSizingMode,
           <Stat label="Total weight">
             <EditableField
               fieldKey="totalWeight"
-              auto={dimensions.activePanels * 10}
+              auto={dimensions.activePanels * dimensions.panelWeightKg}
               overrideState={overrideState}
               format={fmtKg}
             />

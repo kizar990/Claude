@@ -1,5 +1,7 @@
 import { CONFIG, type Config } from "./config";
 import type { Overrides } from "./useOverrides";
+import type { PanelSpec } from "./panels";
+import { PRESET_PANELS } from "./panels";
 
 export interface ProjectMeta {
   name: string;
@@ -22,8 +24,9 @@ export interface SavedProject {
   meta: ProjectMeta;
   input: ScreenInputState;
   overrides: Overrides;
-  panelWidthMm: number;
-  panelHeightMm: number;
+  panelWidthMm: number;   // backward compat
+  panelHeightMm: number;  // backward compat
+  panelSpec?: PanelSpec;  // new — full panel spec
   blankCells: number[];
   chains: ChainData[];
   processorId?: string;
@@ -90,6 +93,24 @@ export function configFromPanelSize(
   panelHeightMm: number
 ): Config {
   return { ...CONFIG, PANEL_WIDTH_MM: panelWidthMm, PANEL_HEIGHT_MM: panelHeightMm };
+}
+
+// Keep PRESET_PANELS exported reference for use in backward compat
+export { PRESET_PANELS };
+
+export function configFromPanel(panel: PanelSpec): Config {
+  return {
+    ...CONFIG,
+    PANEL_WIDTH_MM: panel.widthMm,
+    PANEL_HEIGHT_MM: panel.heightMm,
+    PANEL_PIXELS_W: panel.pixelsW,
+    PANEL_PIXELS_H: panel.pixelsH,
+    PIXEL_PITCH: `P${panel.pixelPitch}`,
+    PANEL_WEIGHT_KG: panel.weightKg,
+    PANEL_OPERATING_POWER_W: panel.operatingPowerW,
+    PANEL_MAX_POWER_W: panel.maxPowerW,
+    PRODUCT_DEFAULT: panel.name,
+  };
 }
 
 export const CHAIN_COLORS = [

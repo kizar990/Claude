@@ -301,8 +301,8 @@ function TechDocument({ meta, calc, overrides, blankCells, chains, dataPortSeque
   const r = <T extends string | number>(key: string, auto: T): T =>
     resolve(key, auto, overrides) as T;
 
-  const columns = Math.round(dimensions.pixelsW / CONFIG.PANEL_PIXELS_W);
-  const rows    = Math.round(dimensions.pixelsH / CONFIG.PANEL_PIXELS_H);
+  const columns = dimensions.columns;
+  const rows    = dimensions.rows;
 
   const widthM  = Number(r("widthM", dimensions.widthM));
   const heightM = Number(r("heightM", dimensions.heightM));
