@@ -7,6 +7,8 @@ import {
   blankProfile,
   duplicateProfile,
   saveCustomProfile,
+  fileToDataUrl,
+  extractDominantColor,
 } from "../profiles";
 
 interface Props {
@@ -205,6 +207,16 @@ function ProfileCreateModal({
   const [name, setName] = useState("");
   const [template, setTemplate] = useState<Template>("skyline");
   const [copyFromId, setCopyFromId] = useState(profiles[0]?.id ?? "");
+  const [logoDataUrl, setLogoDataUrl] = useState<string>("");
+  const [accentColor, setAccentColor] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleLogoFile(file: File) {
+    const dataUrl = await fileToDataUrl(file);
+    setLogoDataUrl(dataUrl);
+    const color = await extractDominantColor(dataUrl);
+    setAccentColor(color);
+  }
 
   function handleCreate() {
     const trimmed = name.trim();
@@ -224,6 +236,8 @@ function ProfileCreateModal({
       ...base,
       id: crypto.randomUUID(),
       name: trimmed,
+      logo: logoDataUrl || base.logo,
+      accentColor: accentColor || base.accentColor,
       isBuiltIn: undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -258,6 +272,35 @@ function ProfileCreateModal({
             placeholder="e.g. Skyline Whitespace, MTA International…"
             className="mt-1 w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
           />
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Logo &amp; colour <span className="normal-case font-normal text-gray-400">(optional)</span></label>
+          <div className="mt-1.5 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs px-3 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              {logoDataUrl ? "Change logo" : "Upload logo"}
+            </button>
+            {logoDataUrl && (
+              <img src={logoDataUrl} alt="Logo preview" className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
+            )}
+            {accentColor && (
+              <div className="flex items-center gap-1.5">
+                <span className="w-4 h-4 rounded-full border border-gray-200 shrink-0" style={{ backgroundColor: accentColor }} />
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{accentColor}</span>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); }}
+            />
+          </div>
         </div>
 
         <div>

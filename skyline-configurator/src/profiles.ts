@@ -5,9 +5,25 @@ import { PROCESSORS } from "./config";
 export type RiggingSystem = "modular" | "scaffolding" | "custom";
 
 export interface ProfileTerminology {
-  frameConnector: string;   // e.g. "Quick Fix" / "Bridge Clamp"
-  panelSupport: string;     // e.g. "UTP" / "Pickup Point"
-  structureType: string;    // e.g. "Omega 55" / "Trussing"
+  // Core structural terms
+  frameConnector: string;          // "Quick Fix" / "Bridge Clamp"
+  panelSupport: string;            // "UTP" / "Pickup Point"
+  structureType: string;           // "Omega 55" / "Trussing"
+  // Kit list label overrides (fall back to Skyline defaults if absent)
+  fitKitLabel?: string;            // "FIT KIT (Quickfix + T-Bone)"
+  datastartKitLabel?: string;      // "Datastart KIT (20/10/5/3)"
+  neutrikCouplersLabel?: string;   // "Neutrik Couplers"
+  powerlinkLabel?: string;         // "Powerlink 1m"
+  datalinkLabel?: string;          // "Datalink 1m"
+  powerstart10mLabel?: string;     // "Powerstart 10m"
+  powerstart1mLabel?: string;      // "Powerstart 1m"
+  etapeLabel?: string;             // "E-tape rolls"
+}
+
+/** Returns the label for a terminology key, falling back to the provided default. */
+export function term(t: ProfileTerminology, key: keyof ProfileTerminology, fallback: string): string {
+  const v = t[key];
+  return typeof v === "string" && v.length > 0 ? v : fallback;
 }
 
 export interface Profile {
@@ -114,6 +130,14 @@ export const MTA_PROFILE: Profile = {
     frameConnector: "Bridge Clamp",
     panelSupport: "Pickup Point",
     structureType: "Trussing",
+    fitKitLabel: "Rigging Kit",
+    datastartKitLabel: "Signal Distribution Kit",
+    neutrikCouplersLabel: "Cable Couplers",
+    powerlinkLabel: "Power Link 1m",
+    datalinkLabel: "Data Link 1m",
+    powerstart10mLabel: "Power Run 10m",
+    powerstart1mLabel: "Power Run 1m",
+    etapeLabel: "Gaffer tape rolls",
   },
   isBuiltIn: true,
   createdAt: "2024-01-01T00:00:00.000Z",
@@ -185,6 +209,61 @@ export function getActiveProfile(profiles: Profile[]): Profile {
 
 export function profileAvailableProcessors(profile: Profile) {
   return PROCESSORS.filter((p) => profile.processorStockIds.includes(p.id));
+}
+
+// ── Logo / colour utilities ───────────────────────────────────────────────────
+
+/**
+ * Reads an image file and returns a data URL.
+ */
+export function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Extracts the dominant non-grey colour from an image data URL.
+ * Samples at reduced resolution for performance.
+ */
+export async function extractDominantColor(dataUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const SIZE = 48;
+      const canvas = document.createElement("canvas");
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve("#2563EB"); return; }
+      ctx.drawImage(img, 0, 0, SIZE, SIZE);
+      const { data } = ctx.getImageData(0, 0, SIZE, SIZE);
+
+      const buckets = new Map<string, number>();
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+        if (a < 128) continue;
+        // Skip near-grey (low saturation), near-black, near-white
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        if (mx - mn < 45 || mx < 40 || mn > 210) continue;
+        // Quantise to 32-step buckets
+        const key = `${Math.round(r / 32) * 32},${Math.round(g / 32) * 32},${Math.round(b / 32) * 32}`;
+        buckets.set(key, (buckets.get(key) ?? 0) + 1);
+      }
+
+      if (buckets.size === 0) { resolve("#2563EB"); return; }
+
+      const [best] = [...buckets.entries()].sort((a, b) => b[1] - a[1]);
+      const [rv, gv, bv] = best[0].split(",").map(Number);
+      const hex = `#${rv.toString(16).padStart(2, "0")}${gv.toString(16).padStart(2, "0")}${bv.toString(16).padStart(2, "0")}`;
+      resolve(hex);
+    };
+    img.onerror = () => resolve("#2563EB");
+    img.src = dataUrl;
+  });
 }
 
 export function blankProfile(): Profile {

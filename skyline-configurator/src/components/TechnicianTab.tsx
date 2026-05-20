@@ -9,6 +9,8 @@ import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
 import { PROCESSORS, computePanelsPerPort } from "../config";
 import type { PanelSpec } from "../panels";
+import { useProfile } from "../ProfileContext";
+import { term } from "../profiles";
 
 interface CustomLine {
   id: string;
@@ -61,6 +63,9 @@ export function TechnicianTab({
   const { dimensions, materials, power, processor } = calc;
   const { overrides, resetAll } = overrideState;
   const anyOverride = Object.keys(overrides).length > 0;
+
+  const profile = useProfile();
+  const T = profile.terminology;
 
   const processorList = availableProcessors ?? PROCESSORS;
   const selectedProcessor = processorList.find((p) => p.id === processorId) ?? processorList[0];
@@ -201,14 +206,14 @@ export function TechnicianTab({
         <div className="divide-y divide-gray-100 dark:divide-gray-800">
           <MatRow label="LED Flightcases" fieldKey="mat_ledFlightcases" auto={materials.ledFlightcases} overrideState={overrideState} note={`ceil(${dimensions.activePanels} ÷ 10)`} />
           <MatRow label="LED Panels" fieldKey="mat_ledPanels" auto={materials.ledPanels} overrideState={overrideState} />
-          <MatRow label="Powerlink 1m" fieldKey="mat_powerlink1m" auto={materials.powerlink1m} overrideState={overrideState} note="cases × 10" indent />
-          <MatRow label="Datalink 1m" fieldKey="mat_datalink1m" auto={materials.datalink1m} overrideState={overrideState} note="cases × 10" indent />
-          <MatRow label="Powerstart 10m" fieldKey="mat_powerstart10m" auto={materials.powerstart10m} overrideState={overrideState} note="cases × 1" indent />
-          <MatRow label="Powerstart 1m" fieldKey="mat_powerstart1m" auto={materials.powerstart1m} overrideState={overrideState} note="cases × 1" indent />
-          <MatRow label="Datastart KIT (20/10/5/3)" fieldKey="mat_datastartKit" auto={materials.datastartKit} overrideState={overrideState} note="cases × 2" indent />
-          <MatRow label="E-tape rolls" fieldKey="mat_etapeRolls" auto={materials.etapeRolls} overrideState={overrideState} note="cases × 1" indent />
-          <MatRow label="FIT KIT (Quicfix + T-Bone)" fieldKey="mat_fitKit" auto={materials.fitKit} overrideState={overrideState} note="cases × 10" indent />
-          <MatRow label="Neutrik Couplers" fieldKey="mat_neutrikCouplers" auto={materials.neutrikCouplers} overrideState={overrideState} note="fixed" />
+          <MatRow label={term(T, "powerlinkLabel", "Powerlink 1m")} fieldKey="mat_powerlink1m" auto={materials.powerlink1m} overrideState={overrideState} note="cases × 10" indent />
+          <MatRow label={term(T, "datalinkLabel", "Datalink 1m")} fieldKey="mat_datalink1m" auto={materials.datalink1m} overrideState={overrideState} note="cases × 10" indent />
+          <MatRow label={term(T, "powerstart10mLabel", "Powerstart 10m")} fieldKey="mat_powerstart10m" auto={materials.powerstart10m} overrideState={overrideState} note="cases × 1" indent />
+          <MatRow label={term(T, "powerstart1mLabel", "Powerstart 1m")} fieldKey="mat_powerstart1m" auto={materials.powerstart1m} overrideState={overrideState} note="cases × 1" indent />
+          <MatRow label={term(T, "datastartKitLabel", "Datastart KIT (20/10/5/3)")} fieldKey="mat_datastartKit" auto={materials.datastartKit} overrideState={overrideState} note="cases × 2" indent />
+          <MatRow label={term(T, "etapeLabel", "E-tape rolls")} fieldKey="mat_etapeRolls" auto={materials.etapeRolls} overrideState={overrideState} note="cases × 1" indent />
+          <MatRow label={term(T, "fitKitLabel", "FIT KIT (Quickfix + T-Bone)")} fieldKey="mat_fitKit" auto={materials.fitKit} overrideState={overrideState} note="cases × 10" indent />
+          <MatRow label={term(T, "neutrikCouplersLabel", "Neutrik Couplers")} fieldKey="mat_neutrikCouplers" auto={materials.neutrikCouplers} overrideState={overrideState} note="fixed" />
           <MatRow label="PROC Flightcase" fieldKey="mat_procFlightcase" auto={materials.procFlightcase} overrideState={overrideState} note="1 per screen" />
           <MatRow label="LED Spares" fieldKey="mat_ledSpares" auto={materials.ledSpares} overrideState={overrideState} note={`ceil(${dimensions.activePanels} × 10%)`} />
           <MatRow

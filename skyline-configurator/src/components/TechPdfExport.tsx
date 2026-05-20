@@ -16,6 +16,8 @@ import type { FullConfig } from "../calculations";
 import type { ProjectMeta, ChainData } from "../store";
 import { resolve } from "../useOverrides";
 import type { Overrides } from "../useOverrides";
+import { term } from "../profiles";
+import type { ProfileTerminology } from "../profiles";
 
 // ── Main layout grid (larger, for page 1) ────────────────────────────────────
 
@@ -320,6 +322,9 @@ interface DocProps {
   powerMaxWatts?: number;
   powerSizingMode?: "operating" | "max";
   cableEntry?: "top" | "bottom" | "left" | "right";
+  profileName?: string;
+  profileAccentColor?: string;
+  terminology?: ProfileTerminology;
 }
 
 function TechDocument({
@@ -328,6 +333,7 @@ function TechDocument({
   numPorts, panelsPerPort, panelPowerW,
   panelOperatingPowerW, panelMaxPowerW,
   powerMaxWatts, powerSizingMode, cableEntry,
+  profileAccentColor, terminology,
 }: DocProps) {
   const { dimensions, materials, power, processor } = calc;
   const r = <T extends string | number>(key: string, auto: T): T =>
@@ -371,23 +377,27 @@ function TechDocument({
     ? populatedPowerChains.reduce((sum, c) => sum + Math.max(0, c.length - 1), 0)
     : Math.max(0, activePanels - powerStarts);
 
+  const T = terminology;
+  const tl = (key: keyof ProfileTerminology, fallback: string) =>
+    T ? term(T, key, fallback) : fallback;
+
   const matItems: [string, string][] = [
-    ["LED Flightcases",    String(r("mat_ledFlightcases",  materials.ledFlightcases))],
-    ["LED Panels",         String(r("mat_ledPanels",       materials.ledPanels))],
-    ["Powerlink 1m",       String(r("mat_powerlink1m",     materials.powerlink1m))],
-    ["Datalink 1m",        String(r("mat_datalink1m",      materials.datalink1m))],
-    ["Powerstart 10m",     String(r("mat_powerstart10m",   materials.powerstart10m))],
-    ["Powerstart 1m",      String(r("mat_powerstart1m",    materials.powerstart1m))],
-    ["Datastart KIT",      String(r("mat_datastartKit",    materials.datastartKit))],
-    ["E-tape rolls",       String(r("mat_etapeRolls",      materials.etapeRolls))],
-    ["FIT KIT",            String(r("mat_fitKit",          materials.fitKit))],
-    ["Neutrik Couplers",   String(r("mat_neutrikCouplers", materials.neutrikCouplers))],
-    ["PROC Flightcase",    String(r("mat_procFlightcase",  materials.procFlightcase))],
-    ["LED Spares",         String(r("mat_ledSpares",       materials.ledSpares))],
-    ["Processor",          String(r("mat_processor",       materials.processor))],
-    ["PWR/HDMI/USB-A/UTP", String(r("mat_powerHdmiUsbUtp",materials.powerHdmiUsbUtp))],
-    ["Mediaplayer",        String(r("mat_mediaplayer",     materials.mediaplayer))],
-    ["PWR/HDMI/USB stick", String(r("mat_powerHdmiUsbStick",materials.powerHdmiUsbStick))],
+    ["LED Flightcases",                               String(r("mat_ledFlightcases",  materials.ledFlightcases))],
+    ["LED Panels",                                    String(r("mat_ledPanels",       materials.ledPanels))],
+    [tl("powerlinkLabel",    "Powerlink 1m"),         String(r("mat_powerlink1m",     materials.powerlink1m))],
+    [tl("datalinkLabel",     "Datalink 1m"),          String(r("mat_datalink1m",      materials.datalink1m))],
+    [tl("powerstart10mLabel","Powerstart 10m"),       String(r("mat_powerstart10m",   materials.powerstart10m))],
+    [tl("powerstart1mLabel", "Powerstart 1m"),        String(r("mat_powerstart1m",    materials.powerstart1m))],
+    [tl("datastartKitLabel", "Datastart KIT"),        String(r("mat_datastartKit",    materials.datastartKit))],
+    [tl("etapeLabel",        "E-tape rolls"),         String(r("mat_etapeRolls",      materials.etapeRolls))],
+    [tl("fitKitLabel",       "FIT KIT"),              String(r("mat_fitKit",          materials.fitKit))],
+    [tl("neutrikCouplersLabel","Neutrik Couplers"),   String(r("mat_neutrikCouplers", materials.neutrikCouplers))],
+    ["PROC Flightcase",                               String(r("mat_procFlightcase",  materials.procFlightcase))],
+    ["LED Spares",                                    String(r("mat_ledSpares",       materials.ledSpares))],
+    ["Processor",                                     String(r("mat_processor",       materials.processor))],
+    ["PWR/HDMI/USB-A/UTP",                            String(r("mat_powerHdmiUsbUtp",materials.powerHdmiUsbUtp))],
+    ["Mediaplayer",                                   String(r("mat_mediaplayer",     materials.mediaplayer))],
+    ["PWR/HDMI/USB stick",                            String(r("mat_powerHdmiUsbStick",materials.powerHdmiUsbStick))],
   ];
 
   const half = Math.ceil(matItems.length / 2);
@@ -436,7 +446,7 @@ function TechDocument({
         </View>
 
         {/* Enhanced power block */}
-        <View style={s.powerBlock}>
+        <View style={[s.powerBlock, profileAccentColor ? { borderColor: profileAccentColor } : {}]}>
           <Text style={s.powerTitle}>POWER REQUIREMENTS</Text>
           <View style={s.powerRow}>
             <Text style={s.powerItem}>
@@ -694,6 +704,7 @@ export function TechPdfDownloadButton({
   numPorts, panelsPerPort, panelPowerW,
   panelOperatingPowerW, panelMaxPowerW,
   powerMaxWatts, powerSizingMode, cableEntry,
+  profileName, profileAccentColor, terminology,
 }: ButtonProps) {
   const slug = [meta.jobNumber, meta.name].filter(Boolean).join("-").replace(/\s+/g, "-") || "tech-sheet";
   const fileName = `tech-sheet-${slug}.pdf`;
@@ -717,6 +728,9 @@ export function TechPdfDownloadButton({
           powerMaxWatts={powerMaxWatts}
           powerSizingMode={powerSizingMode}
           cableEntry={cableEntry}
+          profileName={profileName}
+          profileAccentColor={profileAccentColor}
+          terminology={terminology}
         />
       }
       fileName={fileName}

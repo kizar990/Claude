@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { ProfileContext } from "./ProfileContext";
 import { InputSection } from "./components/InputSection";
 import { DesignerTab } from "./components/DesignerTab";
 import { TechnicianTab } from "./components/TechnicianTab";
@@ -301,6 +302,7 @@ export default function App() {
   }
 
   return (
+    <ProfileContext.Provider value={activeProfile}>
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors">
       {/* Top bar */}
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 no-print">
@@ -308,7 +310,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="font-bold text-lg tracking-tight text-gray-900 dark:text-gray-100">
               SKYLINE{" "}
-              <span className="text-blue-600 font-normal text-sm">LED Wall Configurator</span>
+              <span className="font-normal text-sm" style={{ color: activeProfile.accentColor }}>LED Wall Configurator</span>
             </span>
             <ProfileSwitcher
               profiles={profiles}
@@ -328,9 +330,10 @@ export default function App() {
                   onClick={() => setTab(t)}
                   className={`text-xs px-3 py-1.5 rounded font-medium transition-colors ${
                     tab === t
-                      ? "bg-blue-600 text-white"
+                      ? "text-white"
                       : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                   }`}
+                  style={tab === t ? { backgroundColor: activeProfile.accentColor } : undefined}
                 >
                   {t === "designer" ? "Designer / PM" : t === "technician" ? "Technician" : "Layout"}
                 </button>
@@ -375,6 +378,9 @@ export default function App() {
               powerSizingMode={powerSizingMode}
               powerMaxWatts={powerMaxWatts}
               cableEntry={cableEntry}
+              profileName={activeProfile.name}
+              profileAccentColor={activeProfile.accentColor}
+              terminology={activeProfile.terminology}
             />
           </Suspense>
           <button
@@ -492,6 +498,7 @@ export default function App() {
         </Suspense>
       )}
     </div>
+    </ProfileContext.Provider>
   );
 }
 
