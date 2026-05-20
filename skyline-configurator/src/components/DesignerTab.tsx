@@ -1,21 +1,26 @@
-import { RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { RotateCcw, Info } from "lucide-react";
 import { EditableField } from "./EditableField";
 import { ProcessorBadge } from "./ProcessorBadge";
+import { ProcessorInfoModal } from "./ProcessorInfoModal";
 import { ScreenLayoutDiagram } from "./ScreenLayoutDiagram";
 import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
-import { CONFIG } from "../config";
+import { CONFIG, PROCESSORS } from "../config";
 
 interface Props {
   calc: FullConfig;
   overrideState: OverrideState;
+  processorId: string;
 }
 
-export function DesignerTab({ calc, overrideState }: Props) {
+export function DesignerTab({ calc, overrideState, processorId }: Props) {
   const { dimensions, power, processor, contentSpec } = calc;
   const { resetAll, overrides } = overrideState;
   const anyOverride = Object.keys(overrides).length > 0;
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const selectedProcessor = PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0];
 
   const fmt1 = (v: number | string) => Number(v).toFixed(3);
   const fmtInt = (v: number | string) => Math.round(Number(v)).toString();
@@ -105,7 +110,13 @@ export function DesignerTab({ calc, overrideState }: Props) {
             />
           </Stat>
           <Stat label="Processor">
-            <ProcessorBadge processor={processor} compact />
+            <div className="flex items-center gap-1.5">
+              <ProcessorBadge processor={processor} compact />
+              <button onClick={() => setShowModal(true)} title="View full processor specifications"
+                className="p-0.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+                <Info size={13} />
+              </button>
+            </div>
           </Stat>
         </div>
       </section>
@@ -188,6 +199,16 @@ export function DesignerTab({ calc, overrideState }: Props) {
           <span>{processor.warning}</span>
         </div>
       )}
+
+      {/* Processor info note (e.g. rotation advice) */}
+      {processor.note && (
+        <div className="flex items-start gap-2 px-4 py-3 rounded-xl text-sm bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300">
+          <span className="text-lg leading-none mt-0.5">ℹ</span>
+          <span>{processor.note}</span>
+        </div>
+      )}
+
+      {showModal && <ProcessorInfoModal processor={selectedProcessor} onClose={() => setShowModal(false)} />}
     </div>
   );
 }

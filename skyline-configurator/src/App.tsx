@@ -74,7 +74,11 @@ export default function App() {
     [processorId]
   );
   const panelsPerPort = useMemo(
-    () => computePanelsPerPort(selectedProcessor.pixelsPerPort, CONFIG.PANEL_PIXELS_W, CONFIG.PANEL_PIXELS_H),
+    () => computePanelsPerPort(
+      selectedProcessor.recommendedPerPortPixels ?? 0,
+      CONFIG.PANEL_PIXELS_W,
+      CONFIG.PANEL_PIXELS_H
+    ),
     [selectedProcessor]
   );
 
@@ -213,7 +217,7 @@ export default function App() {
               chains={chains}
               dataPortSequences={dataPortSequences}
               powerChainSequences={powerChainSequences}
-              numPorts={selectedProcessor.ports}
+              numPorts={selectedProcessor.ethernetPorts ?? 0}
               panelsPerPort={panelsPerPort}
               panelPowerW={CONFIG.PANEL_POWER_W}
               powerMaxWatts={powerMaxWatts}
@@ -265,7 +269,7 @@ export default function App() {
           />
 
           {tab === "designer" && (
-            <DesignerTab calc={calc} overrideState={overrideState} />
+            <DesignerTab calc={calc} overrideState={overrideState} processorId={processorId} />
           )}
 
           {tab === "technician" && techMode && (

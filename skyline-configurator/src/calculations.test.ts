@@ -99,21 +99,22 @@ describe("calcPower — 21 panels, 13A circuits at 240V", () => {
 });
 
 describe("calcProcessorFromDimensions", () => {
-  it("1792×768 (7×3) → 1 processor, no upgrade needed", () => {
+  it("1792×768 (7×3) → status ok, no upgrade needed", () => {
     const p = calcProcessorFromDimensions(1792, 768);
     expect(p.count).toBe(1);
     expect(p.needsUpgrade).toBe(false);
     expect(p.warning).toBeNull();
+    expect(p.status).toBe("ok");
   });
-  it("1920×1080 (exactly HD) → 1 processor", () => {
+  it("1920×1080 → status ok, 1 processor", () => {
     const p = calcProcessorFromDimensions(1920, 1080);
     expect(p.count).toBe(1);
     expect(p.needsUpgrade).toBe(false);
   });
-  it("2304×1152 → needs upgrade", () => {
-    const p = calcProcessorFromDimensions(2304, 1152);
+  it("4096×768 → insufficient (4096 > 3840 max output width)", () => {
+    const p = calcProcessorFromDimensions(4096, 768);
     expect(p.needsUpgrade).toBe(true);
-    expect(p.count).toBeGreaterThanOrEqual(2);
+    expect(p.status).toBe("insufficient");
     expect(p.warning).toMatch(/⚠/);
   });
 });
@@ -127,7 +128,7 @@ function sufficiency(cols: number, rows: number, processorId: string) {
 }
 
 describe("calcProcessorSufficiency — three-state panel-load check", () => {
-  // MCTRL660: 4 ports × floor(650000/65536) = 4 × 9 = 36 panels capacity
+  // MCTRL660: 4 ports × floor(600000/65536) = 4 × 9 = 36 panels capacity
 
   it("6×5 (30 panels) with MCTRL660 (36 cap) → OK at 83%", () => {
     const p = sufficiency(6, 5, "mctrl660");
@@ -139,7 +140,7 @@ describe("calcProcessorSufficiency — three-state panel-load check", () => {
   });
 
   it("6×5 (30 panels) with MCTRL660 Pro (54 cap) → OK at 55.6%", () => {
-    const p = sufficiency(6, 5, "mctrl660pro");
+    const p = sufficiency(6, 5, "mctrl660-pro");
     expect(p.status).toBe("ok");
     expect(p.needsUpgrade).toBe(false);
     expect(p.panelCapacity).toBe(54); // 6 ports × 9
@@ -238,5 +239,42 @@ describe("input mode helpers — 496mm panels", () => {
     expect(r.input.rows).toBe(2);
     expect(r.deltaW).toBe(5 * 256 - 1400); // 1280 - 1400 = -120
     expect(r.deltaH).toBe(2 * 256 - 600);  // 512 - 600 = -88
+  });
+});
+
+describe("calcProcessorSufficiency — verification cases", () => {
+  it("5×3 MCTRL660 → ok, panelLoad ≈ 0.417, note null", () => {
+    // 5×3 = 15 panels, 1280×768 px
+    const p = calcProcessorSufficiency(1280, 768, 15, "mctrl660");
+    expect(p.status).toBe("ok");
+    expect(p.panelLoad).toBeCloseTo(15 / 36, 4);
+    expect(p.note).toBeNull();
+  });
+
+  it("10×1 MCTRL660 (2560×256) → ok, fits within 3840 wide", () => {
+    // 10×1 = 10 panels, 2560×256 px
+    const p = calcProcessorSufficiency(2560, 256, 10, "mctrl660");
+    expect(p.status).toBe("ok");
+    expect(p.note).toBeNull();
+  });
+
+  it("16×9 MCTRL660 (4096×2304) → insufficient, 4096 > 3840 max dim", () => {
+    const p = calcProcessorSufficiency(4096, 2304, 144, "mctrl660");
+    expect(p.status).toBe("insufficient");
+    expect(p.warning).toMatch(/⚠/);
+  });
+
+  it("H2 → status modular", () => {
+    const p = calcProcessorSufficiency(1920, 1080, 21, "h2");
+    expect(p.status).toBe("modular");
+    expect(p.modelName).toBe("H2 (Custom / Modular)");
+    expect(p.note).toMatch(/card/i);
+  });
+
+  it("30×20 MX40 Pro (7680×5120) → insufficient pixel cap (7680×5120=39.3M > 9M cap)", () => {
+    // 600 panels, 7680×5120 px
+    const p = calcProcessorSufficiency(7680, 5120, 600, "mx40-pro");
+    expect(p.status).toBe("insufficient");
+    expect(p.warning).toMatch(/⚠/);
   });
 });

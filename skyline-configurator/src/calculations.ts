@@ -48,12 +48,14 @@ export interface PowerSpec {
 export interface ProcessorSpec {
   modelName: string;
   count: number;
-  /** "ok" | "tight" (>85% capacity) | "insufficient" (>100% capacity) */
-  status: "ok" | "tight" | "insufficient";
+  /** "ok" | "tight" (>85% capacity) | "insufficient" (>100% capacity) | "modular" (card-dependent) */
+  status: "ok" | "tight" | "insufficient" | "modular";
   /** true when status === "insufficient" — kept for backward compat */
   needsUpgrade: boolean;
   specsConfirmed: boolean;
   warning: string | null;
+  /** informational note (e.g. rotation advice) */
+  note: string | null;
   /** 0–1 fraction of the processor's total panel capacity used */
   panelLoad: number;
   /** Total panels this processor can drive (ports × panelsPerPort) */
@@ -137,7 +139,7 @@ export function calcPower(activePanels: number, cfg: Config = CONFIG): PowerSpec
 export function calcProcessor(_activePanels: number, _cfg: Config = CONFIG): ProcessorSpec {
   return {
     modelName: "", count: 1, status: "ok", needsUpgrade: false,
-    specsConfirmed: true, warning: null, panelLoad: 0, panelCapacity: 0,
+    specsConfirmed: true, warning: null, note: null, panelLoad: 0, panelCapacity: 0,
   };
 }
 
@@ -146,26 +148,7 @@ export function calcProcessorFromDimensions(
   pixelsH: number,
   cfg: Config = CONFIG
 ): ProcessorSpec {
-  const maxW = cfg.PROCESSOR_MAX_PIXELS_W;
-  const maxH = cfg.PROCESSOR_MAX_PIXELS_H;
-  const base = { specsConfirmed: true, panelLoad: 0, panelCapacity: 0 };
-
-  if (pixelsW <= maxW && pixelsH <= maxH) {
-    return { ...base, modelName: "HD", count: 1, status: "ok", needsUpgrade: false, warning: null };
-  }
-
-  const neededW = Math.ceil(pixelsW / maxW);
-  const neededH = Math.ceil(pixelsH / maxH);
-  const count = Math.max(neededW, neededH);
-
-  return {
-    ...base,
-    modelName: "HD",
-    count,
-    status: "insufficient",
-    needsUpgrade: true,
-    warning: `⚠ Exceeds HD processor (${pixelsW}×${pixelsH} px) — ${count} processor${count > 1 ? "s" : ""} needed or upgrade to 4K processor`,
-  };
+  return calcProcessorSufficiency(pixelsW, pixelsH, 0, PROCESSORS[0].id, cfg);
 }
 
 export function calcProcessorSufficiency(
@@ -176,48 +159,119 @@ export function calcProcessorSufficiency(
   cfg: Config = CONFIG
 ): ProcessorSpec {
   const model = PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0];
-  const { name, maxPixelsW, maxPixelsH, ports } = model;
-  const tier = maxPixelsW <= 1920 ? "HD" : "4K";
-  const label = `${name} (${tier})`;
-  const panelsPerPort = computePanelsPerPort(model.pixelsPerPort, cfg.PANEL_PIXELS_W, cfg.PANEL_PIXELS_H);
+
+  // A. Modular check
+  if (model.isModular) {
+    return {
+      modelName: "H2 (Custom / Modular)",
+      status: "modular",
+      count: 1,
+      needsUpgrade: false,
+      specsConfirmed: false,
+      warning: null,
+      note: "H2 capacity depends on installed cards. Confirm with technical team.",
+      panelLoad: 0,
+      panelCapacity: 0,
+    };
+  }
+
+  const {
+    name,
+    ethernetPorts,
+    officialPerPortMaxPixels,
+    recommendedPerPortPixels,
+    officialTheoreticalMaxPixels,
+    recommendedMaxPixels,
+    devicePixelCap,
+    maxOutputWidth,
+    maxOutputHeight,
+  } = model;
+
+  const ports = ethernetPorts ?? 0;
+  const perPortRec = recommendedPerPortPixels ?? 0;
+  const perPortOff = officialPerPortMaxPixels ?? 0;
+
+  // B. Dimension check (rotation-aware)
+  const maxOutW = maxOutputWidth ?? Infinity;
+  const maxOutH = maxOutputHeight ?? Infinity;
+  const maxDim = Math.max(maxOutW, maxOutH);
+  const minDim = Math.min(maxOutW, maxOutH);
+  const wallMax = Math.max(pixelsW, pixelsH);
+  const wallMin = Math.min(pixelsW, pixelsH);
+
+  const fitsLandscape = pixelsW <= maxOutW && pixelsH <= maxOutH;
+  const fitsEither = wallMax <= maxDim && wallMin <= minDim;
+
+  if (!fitsEither) {
+    return {
+      modelName: name, count: 1, status: "insufficient", needsUpgrade: true,
+      specsConfirmed: true, panelLoad: 0, panelCapacity: 0,
+      warning: `⚠ Exceeds max output dimension: ${wallMax.toLocaleString()} px (processor max ${maxDim.toLocaleString()} px)`,
+      note: null,
+    };
+  }
+
+  const rotationNote = (fitsEither && !fitsLandscape)
+    ? "Fits with 90° rotation — configure portrait orientation in NovaLCT."
+    : null;
+
+  // C. Per-port panel check
+  const panelsPerPort = computePanelsPerPort(perPortRec, cfg.PANEL_PIXELS_W, cfg.PANEL_PIXELS_H);
   const panelCapacity = ports * panelsPerPort;
-  const panelLoad = activePanels / panelCapacity;
+  const panelLoad = panelCapacity > 0 ? activePanels / panelCapacity : 0;
+
+  if (activePanels > panelCapacity && panelCapacity > 0) {
+    return {
+      modelName: name, count: 1, status: "insufficient", needsUpgrade: true,
+      specsConfirmed: true, panelLoad, panelCapacity,
+      warning: `⚠ Panel count exceeds port capacity: ${activePanels} panels, ${ports} ports × ${panelsPerPort} = ${panelCapacity} max`,
+      note: rotationNote,
+    };
+  }
+
+  // D. Pixel capacity — three-tier
+  const totalPx = pixelsW * pixelsH;
+  const effectiveCap = devicePixelCap ?? officialTheoreticalMaxPixels ?? (ports * perPortOff);
+  const recommendedCap = recommendedMaxPixels ?? (ports * perPortRec);
+
+  const fmt = (n: number) => n.toLocaleString();
+
+  if (totalPx > effectiveCap) {
+    return {
+      modelName: name, count: 1, status: "insufficient", needsUpgrade: true,
+      specsConfirmed: true, panelLoad, panelCapacity,
+      warning: `⚠ Exceeds total pixel capacity: ${fmt(totalPx)} / ${fmt(effectiveCap)} px`,
+      note: rotationNote,
+    };
+  }
+
+  if (totalPx > recommendedCap) {
+    return {
+      modelName: name, count: 1, status: "tight", needsUpgrade: false,
+      specsConfirmed: true, panelLoad, panelCapacity,
+      warning: `Above recommended capacity: ${fmt(totalPx)} / ${fmt(recommendedCap)} recommended (within ${fmt(effectiveCap)} theoretical)`,
+      note: rotationNote,
+    };
+  }
+
+  // E. Panel load tight check
   const TIGHT = cfg.PROCESSOR_TIGHT_THRESHOLD;
-
-  // Condition A: pixel resolution fits within controller's max W×H
-  const pixelsFit = pixelsW <= maxPixelsW && pixelsH <= maxPixelsH;
-
-  // Condition B: panel count within port capacity
-  const panelsFit = activePanels <= panelCapacity;
-
-  if (!pixelsFit) {
-    return {
-      modelName: label, count: 1, status: "insufficient", needsUpgrade: true,
-      specsConfirmed: model.specsConfirmed, panelLoad, panelCapacity,
-      warning: `⚠ ${name} max content size is ${maxPixelsW}×${maxPixelsH} — screen is ${pixelsW}×${pixelsH} px`,
-    };
-  }
-
-  if (!panelsFit) {
-    return {
-      modelName: label, count: 1, status: "insufficient", needsUpgrade: true,
-      specsConfirmed: model.specsConfirmed, panelLoad, panelCapacity,
-      warning: `⚠ ${name} can drive ${panelCapacity} panels (${ports} ports × ${panelsPerPort}) — screen has ${activePanels}`,
-    };
-  }
-
   if (panelLoad > TIGHT) {
+    const pct = Math.round(panelLoad * 100);
     return {
-      modelName: label, count: 1, status: "tight", needsUpgrade: false,
-      specsConfirmed: model.specsConfirmed, panelLoad, panelCapacity,
-      warning: `${name} at ${Math.round(panelLoad * 100)}% panel capacity (${activePanels}/${panelCapacity}) — consider a larger processor`,
+      modelName: name, count: 1, status: "tight", needsUpgrade: false,
+      specsConfirmed: true, panelLoad, panelCapacity,
+      warning: `${name} at ${pct}% panel capacity (${activePanels}/${panelCapacity})`,
+      note: rotationNote,
     };
   }
 
+  // F. OK
   return {
-    modelName: label, count: 1, status: "ok", needsUpgrade: false,
-    specsConfirmed: model.specsConfirmed, panelLoad, panelCapacity,
+    modelName: name, count: 1, status: "ok", needsUpgrade: false,
+    specsConfirmed: true, panelLoad, panelCapacity,
     warning: null,
+    note: rotationNote,
   };
 }
 

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { RotateCcw, Plus, Trash2 } from "lucide-react";
+import { RotateCcw, Plus, Trash2, Info } from "lucide-react";
 import { EditableField } from "./EditableField";
 import { ProcessorBadge } from "./ProcessorBadge";
+import { ProcessorInfoModal } from "./ProcessorInfoModal";
 import { CableRoutingGrid } from "./CableRoutingGrid";
 import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
@@ -52,9 +53,14 @@ export function TechnicianTab({
   const anyOverride = Object.keys(overrides).length > 0;
 
   const selectedProcessor = PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0];
-  const panelsPerPort = computePanelsPerPort(selectedProcessor.pixelsPerPort, CONFIG.PANEL_PIXELS_W, CONFIG.PANEL_PIXELS_H);
+  const panelsPerPort = computePanelsPerPort(
+    selectedProcessor.recommendedPerPortPixels ?? 0,
+    CONFIG.PANEL_PIXELS_W,
+    CONFIG.PANEL_PIXELS_H
+  );
 
   const [customLines, setCustomLines] = useState<CustomLine[]>([]);
+  const [showModal, setShowModal] = useState<boolean>(false);
 
   function addCustomLine() {
     setCustomLines((prev) => [
@@ -135,6 +141,10 @@ export function TechnicianTab({
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
+            <button onClick={() => setShowModal(true)} title="View full processor specifications"
+              className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+              <Info size={15} />
+            </button>
           </div>
           <ProcessorBadge processor={processor} />
         </div>
@@ -154,7 +164,7 @@ export function TechnicianTab({
               panelHeightMm={CONFIG.PANEL_HEIGHT_MM}
               pixelPitch={CONFIG.PIXEL_PITCH}
               activePanels={dimensions.activePanels}
-              numPorts={selectedProcessor.ports}
+              numPorts={selectedProcessor.ethernetPorts ?? 0}
               panelsPerPort={panelsPerPort}
               panelPowerW={CONFIG.PANEL_POWER_W}
               routingMode={routingMode}
@@ -282,6 +292,8 @@ export function TechnicianTab({
           {calc.contentSpec}
         </p>
       </section>
+
+      {showModal && <ProcessorInfoModal processor={selectedProcessor} onClose={() => setShowModal(false)} />}
     </div>
   );
 }
