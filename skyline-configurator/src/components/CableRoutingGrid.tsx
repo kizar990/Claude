@@ -15,7 +15,7 @@ const CHAIN_COLORS = [
 const GRID_W = 540;
 const CALLOUT_TOP = 46;
 const CALLOUT_R = 80;
-const CAPTION_H = 28;
+const CAPTION_H = 40; // extra room for cable entry indicator line
 const CALLOUT_COLOR = "#D63025";
 const TICK_HALF = 7;
 const LABEL_GAP = 11;
@@ -24,6 +24,8 @@ const GRID_BORDER = "#8BA3C0";
 const CAPTION_COLOR = "#718096";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
+type EntryEdge = "top" | "bottom" | "left" | "right";
+
 interface Props {
   columns: number;
   rows: number;
@@ -37,10 +39,12 @@ interface Props {
   panelsPerPort: number;
   panelPowerW: number;
   routingMode: "layout" | "data" | "power";
+  cableEntry: EntryEdge;
   dataPortSequences: Record<string, number[]>;
   powerChainSequences: Record<string, number[]>;
   powerMaxWatts: number;
   onModeChange: (m: "layout" | "data" | "power") => void;
+  onCableEntryChange: (e: EntryEdge) => void;
   onDataPortSequencesChange: (s: Record<string, number[]>) => void;
   onPowerChainSequencesChange: (s: Record<string, number[]>) => void;
   onPowerMaxWattsChange: (w: number) => void;
@@ -67,10 +71,12 @@ export function CableRoutingGrid({
   panelsPerPort,
   panelPowerW,
   routingMode,
+  cableEntry,
   dataPortSequences,
   powerChainSequences,
   powerMaxWatts,
   onModeChange,
+  onCableEntryChange,
   onDataPortSequencesChange,
   onPowerChainSequencesChange,
 }: Props) {
@@ -283,79 +289,125 @@ export function CableRoutingGrid({
 
   // ── Auto-assignment algorithms ────────────────────────────────────────────
 
-  function serpentineOrder(): number[] {
+  // Full-wall reading order based on cable entry side.
+  // Bottom/Top: row-major serpentine. Left/Right: column-major serpentine.
+  // Starting corner is always the entry side, so every port's first panel
+  // appears at that edge.
+  function serpentineForEntry(entry: EntryEdge): number[] {
     const order: number[] = [];
-    for (let r = 0; r < rows; r++) {
-      if (r % 2 === 0) for (let c = 0; c < columns; c++) order.push(r * columns + c);
-      else for (let c = columns - 1; c >= 0; c--) order.push(r * columns + c);
+    if (entry === "top") {
+      for (let r = 0; r < rows; r++) {
+        if (r % 2 === 0) for (let c = 0; c < columns; c++) order.push(r * columns + c);
+        else for (let c = columns - 1; c >= 0; c--) order.push(r * columns + c);
+      }
+    } else if (entry === "bottom") {
+      for (let r = rows - 1; r >= 0; r--) {
+        const ri = rows - 1 - r;
+        if (ri % 2 === 0) for (let c = 0; c < columns; c++) order.push(r * columns + c);
+        else for (let c = columns - 1; c >= 0; c--) order.push(r * columns + c);
+      }
+    } else if (entry === "left") {
+      for (let c = 0; c < columns; c++) {
+        if (c % 2 === 0) for (let r = 0; r < rows; r++) order.push(r * columns + c);
+        else for (let r = rows - 1; r >= 0; r--) order.push(r * columns + c);
+      }
+    } else {
+      for (let c = columns - 1; c >= 0; c--) {
+        const ci = columns - 1 - c;
+        if (ci % 2 === 0) for (let r = 0; r < rows; r++) order.push(r * columns + c);
+        else for (let r = rows - 1; r >= 0; r--) order.push(r * columns + c);
+      }
     }
     return order;
   }
 
-  // Balanced chunks in serpentine order — may cross row boundaries
+  // Balanced serpentine chunks — all ports start from the entry side
   function autoEvenSplit(): Record<string, number[]> {
     const total = columns * rows;
-    const minPorts = Math.ceil(total / panelsPerPort);
-    const use = Math.min(numPorts, Math.max(minPorts, numPorts));
+    const use = Math.min(numPorts, Math.max(Math.ceil(total / panelsPerPort), numPorts));
     const base = Math.floor(total / use);
     const extra = total % use;
-    const order = serpentineOrder();
+    const order = serpentineForEntry(cableEntry);
     const seqs: Record<string, number[]> = {};
     let idx = 0;
     for (let p = 1; p <= use; p++) {
-      const cnt = base + (p <= extra ? 1 : 0);
-      seqs[String(p)] = order.slice(idx, idx + cnt);
-      idx += cnt;
+      seqs[String(p)] = order.slice(idx, idx + base + (p <= extra ? 1 : 0));
+      idx += seqs[String(p)].length;
     }
     return seqs;
   }
 
-  // Whole rows per port — uses fewer ports when rows < numPorts
+  // Whole rows per port — each port starts from the entry-side row of its strip
   function autoRowAligned(): Record<string, number[]> {
     const seqs: Record<string, number[]> = {};
-    function rowPanels(r: number): number[] {
-      if (r % 2 === 0) return Array.from({ length: columns }, (_, c) => r * columns + c);
-      return Array.from({ length: columns }, (_, c) => r * columns + (columns - 1 - c));
+    // Row reading order: bottom-up for bottom entry, top-down otherwise
+    const orderedRows = cableEntry === "bottom"
+      ? Array.from({ length: rows }, (_, i) => rows - 1 - i)
+      : Array.from({ length: rows }, (_, i) => i);
+
+    // Within each port, serpentine across the port's rows (resets direction per port)
+    function portPanels(portRows: number[]): number[] {
+      const panels: number[] = [];
+      portRows.forEach((r, idx) => {
+        const ltr = cableEntry === "right" ? idx % 2 !== 0 : idx % 2 === 0;
+        if (ltr) for (let c = 0; c < columns; c++) panels.push(r * columns + c);
+        else for (let c = columns - 1; c >= 0; c--) panels.push(r * columns + c);
+      });
+      return panels;
     }
-    if (rows <= numPorts) {
-      for (let r = 0; r < rows; r++) { seqs[String(r + 1)] = rowPanels(r); }
+
+    if (orderedRows.length <= numPorts) {
+      orderedRows.forEach((r, i) => { seqs[String(i + 1)] = portPanels([r]); });
     } else {
       const base = Math.floor(rows / numPorts);
       const extra = rows % numPorts;
-      let rs = 0;
+      let ri = 0;
       for (let p = 1; p <= numPorts; p++) {
         const nr = base + (p <= extra ? 1 : 0);
-        seqs[String(p)] = [];
-        for (let ri = 0; ri < nr; ri++) seqs[String(p)].push(...rowPanels(rs + ri));
-        rs += nr;
+        seqs[String(p)] = portPanels(orderedRows.slice(ri, ri + nr));
+        ri += nr;
       }
     }
     return seqs;
   }
 
-  // Whole columns per port — uses fewer ports when columns < numPorts
+  // Whole columns per port — each port starts from the entry-side row of its column group
   function autoColumnAligned(): Record<string, number[]> {
     const seqs: Record<string, number[]> = {};
     const use = Math.min(numPorts, columns);
     const base = Math.floor(columns / use);
     const extra = columns % use;
-    let cs = 0;
+    // Column reading order: right-to-left for right entry, left-to-right otherwise
+    const orderedCols = cableEntry === "right"
+      ? Array.from({ length: columns }, (_, i) => columns - 1 - i)
+      : Array.from({ length: columns }, (_, i) => i);
+
+    // Within each port, serpentine through columns starting from the entry row
+    function portPanels(portCols: number[]): number[] {
+      const panels: number[] = [];
+      portCols.forEach((col, idx) => {
+        // bottom → first col goes up (rows-1 → 0), alternates
+        // top    → first col goes down (0 → rows-1), alternates
+        // left/right → first col goes down, alternates
+        const goUp = cableEntry === "bottom" ? idx % 2 === 0 : idx % 2 !== 0;
+        if (goUp) for (let r = rows - 1; r >= 0; r--) panels.push(r * columns + col);
+        else for (let r = 0; r < rows; r++) panels.push(r * columns + col);
+      });
+      return panels;
+    }
+
+    let ci = 0;
     for (let p = 1; p <= use; p++) {
       const nc = base + (p <= extra ? 1 : 0);
-      seqs[String(p)] = [];
-      for (let ci = 0; ci < nc; ci++) {
-        const col = cs + ci;
-        if (col % 2 === 0) for (let r = 0; r < rows; r++) seqs[String(p)].push(r * columns + col);
-        else for (let r = rows - 1; r >= 0; r--) seqs[String(p)].push(r * columns + col);
-      }
-      cs += nc;
+      seqs[String(p)] = portPanels(orderedCols.slice(ci, ci + nc));
+      ci += nc;
     }
     return seqs;
   }
 
-  // Fills each port to max capacity — uses fewest ports possible
+  // Fills each port to max capacity — uses fewest ports, all starting from entry side
   function autoMinimumPorts(): Record<string, number[]> {
-    const order = serpentineOrder();
+    const order = serpentineForEntry(cableEntry);
     const seqs: Record<string, number[]> = {};
     let port = 1;
     for (const idx of order) {
@@ -367,6 +419,24 @@ export function CableRoutingGrid({
         port++;
       }
     }
+    return seqs;
+  }
+
+  // Auto-assign power chains using entry-aware serpentine
+  function autoPowerSerpentine(): Record<string, number[]> {
+    const panelsPerChain = Math.max(1, Math.floor(powerMaxWatts / panelPowerW));
+    const total = columns * rows;
+    const chainsNeeded = Math.ceil(total / panelsPerChain);
+    const base = Math.floor(total / chainsNeeded);
+    const extra = total % chainsNeeded;
+    const order = serpentineForEntry(cableEntry);
+    const seqs: Record<string, number[]> = {};
+    let idx = 0;
+    for (let ch = 1; ch <= chainsNeeded; ch++) {
+      seqs[String(ch)] = order.slice(idx, idx + base + (ch <= extra ? 1 : 0));
+      idx += seqs[String(ch)].length;
+    }
+    if (chainsNeeded > numChains) setNumChains(chainsNeeded);
     return seqs;
   }
 
@@ -477,6 +547,32 @@ export function CableRoutingGrid({
         ))}
       </div>
 
+      {/* ── Cable entry side selector (data + power modes) ───────────────── */}
+      {(routingMode === "data" || routingMode === "power") && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-gray-500 dark:text-gray-400">Cable entry:</span>
+          {([
+            { edge: "bottom" as EntryEdge, label: "↑ Bottom", title: "Processor at floor — cables enter from below (default for most installs)" },
+            { edge: "top"    as EntryEdge, label: "↓ Top",    title: "Processor above wall — cables enter from above (ceiling-flown installs)" },
+            { edge: "left"   as EntryEdge, label: "→ Left",   title: "Processor to the left — cables enter from the left side" },
+            { edge: "right"  as EntryEdge, label: "← Right",  title: "Processor to the right — cables enter from the right side" },
+          ]).map(({ edge, label, title }) => (
+            <button
+              key={edge}
+              title={title}
+              onClick={() => onCableEntryChange(edge)}
+              className={`text-xs px-2.5 py-1 rounded transition-colors ${
+                cableEntry === edge
+                  ? "bg-red-600 text-white font-medium"
+                  : "border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── Port selector (data mode) ─────────────────────────────────────── */}
       {routingMode === "data" && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -575,12 +671,19 @@ export function CableRoutingGrid({
       )}
 
       {routingMode === "power" && (
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap items-center">
           <button
             onClick={() => onPowerChainSequencesChange({})}
             className="text-xs px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
           >
-            Clear all power
+            Clear
+          </button>
+          <button
+            title="Auto-assign power chains using entry-aware serpentine. Distributes panels evenly across chains within the wattage budget."
+            onClick={() => onPowerChainSequencesChange(autoPowerSerpentine())}
+            className="text-xs px-3 py-1.5 rounded bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40"
+          >
+            Auto chains
           </button>
         </div>
       )}
@@ -726,9 +829,39 @@ export function CableRoutingGrid({
             {`${heightM.toFixed(3)} m`}
           </text>
 
+          {/* ── Cable entry indicator ─────────────────────────────── */}
+          {(routingMode === "data" || routingMode === "power") && (() => {
+            const EC = CALLOUT_COLOR;
+            const entryLabels: Record<EntryEdge, string> = {
+              bottom: "↑ CABLE ENTRY — BOTTOM",
+              top:    "↓ CABLE ENTRY — TOP",
+              left:   "→ CABLE ENTRY — LEFT",
+              right:  "← CABLE ENTRY — RIGHT",
+            };
+            // Colored stripe at the entry edge of the grid
+            const stripe = {
+              bottom: <rect key="es" x={gx} y={gy + gridH - 3} width={GRID_W} height={3} fill={EC} opacity={0.45} />,
+              top:    <rect key="es" x={gx} y={gy} width={GRID_W} height={3} fill={EC} opacity={0.45} />,
+              left:   <rect key="es" x={gx} y={gy} width={3} height={gridH} fill={EC} opacity={0.45} />,
+              right:  <rect key="es" x={gx + GRID_W - 3} y={gy} width={3} height={gridH} fill={EC} opacity={0.45} />,
+            }[cableEntry];
+            return (
+              <>
+                {stripe}
+                <text
+                  x={gx + GRID_W / 2} y={gy + gridH + 13}
+                  textAnchor="middle" fontSize={8} fontFamily="system-ui,sans-serif"
+                  fontWeight="600" fill={EC}
+                >
+                  {entryLabels[cableEntry]}
+                </text>
+              </>
+            );
+          })()}
+
           {/* ── Caption ───────────────────────────────────────────────── */}
           <text
-            x={gx} y={gy + gridH + 18}
+            x={gx} y={gy + gridH + 30}
             fontSize={10} fontFamily="system-ui,sans-serif"
             fill={CAPTION_COLOR}
           >

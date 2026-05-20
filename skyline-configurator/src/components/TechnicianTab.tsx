@@ -20,10 +20,12 @@ interface Props {
   processorId: string;
   onProcessorChange: (id: string) => void;
   routingMode: "layout" | "data" | "power";
+  cableEntry: "top" | "bottom" | "left" | "right";
   dataPortSequences: Record<string, number[]>;
   powerChainSequences: Record<string, number[]>;
   powerMaxWatts: number;
   onRoutingModeChange: (m: "layout" | "data" | "power") => void;
+  onCableEntryChange: (e: "top" | "bottom" | "left" | "right") => void;
   onDataPortSequencesChange: (s: Record<string, number[]>) => void;
   onPowerChainSequencesChange: (s: Record<string, number[]>) => void;
   onPowerMaxWattsChange: (w: number) => void;
@@ -35,10 +37,12 @@ export function TechnicianTab({
   processorId,
   onProcessorChange,
   routingMode,
+  cableEntry,
   dataPortSequences,
   powerChainSequences,
   powerMaxWatts,
   onRoutingModeChange,
+  onCableEntryChange,
   onDataPortSequencesChange,
   onPowerChainSequencesChange,
   onPowerMaxWattsChange,
@@ -154,10 +158,12 @@ export function TechnicianTab({
               panelsPerPort={panelsPerPort}
               panelPowerW={CONFIG.PANEL_POWER_W}
               routingMode={routingMode}
+              cableEntry={cableEntry}
               dataPortSequences={dataPortSequences}
               powerChainSequences={powerChainSequences}
               powerMaxWatts={powerMaxWatts}
               onModeChange={onRoutingModeChange}
+              onCableEntryChange={onCableEntryChange}
               onDataPortSequencesChange={onDataPortSequencesChange}
               onPowerChainSequencesChange={onPowerChainSequencesChange}
               onPowerMaxWattsChange={onPowerMaxWattsChange}

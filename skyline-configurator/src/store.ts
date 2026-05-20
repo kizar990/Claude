@@ -28,6 +28,7 @@ export interface SavedProject {
   chains: ChainData[];
   processorId?: string;
   routingMode?: "layout" | "data" | "power";
+  cableEntry?: "top" | "bottom" | "left" | "right";
   dataPortSequences?: Record<string, number[]>;  // port num as string key → ordered panel flat-indices
   powerChainSequences?: Record<string, number[]>;
   powerMaxWatts?: number;

@@ -51,6 +51,7 @@ export default function App() {
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [processorId, setProcessorId] = useState<string>(PROCESSORS[0].id);
   const [routingMode, setRoutingMode] = useState<"layout" | "data" | "power">("layout");
+  const [cableEntry, setCableEntry] = useState<"top" | "bottom" | "left" | "right">("bottom");
   const [dataPortSequences, setDataPortSequences] = useState<Record<string, number[]>>({});
   const [powerChainSequences, setPowerChainSequences] = useState<Record<string, number[]>>({});
   const [powerMaxWatts, setPowerMaxWatts] = useState(2400);
@@ -90,6 +91,7 @@ export default function App() {
       chains,
       processorId,
       routingMode,
+      cableEntry,
       dataPortSequences,
       powerChainSequences,
       powerMaxWatts,
@@ -108,6 +110,7 @@ export default function App() {
     setChains(p.chains ?? []);
     setProcessorId(p.processorId ?? PROCESSORS[0].id);
     setRoutingMode(p.routingMode ?? "layout");
+    setCableEntry(p.cableEntry ?? "bottom");
     setDataPortSequences(p.dataPortSequences ?? {});
     setPowerChainSequences(p.powerChainSequences ?? {});
     setPowerMaxWatts(p.powerMaxWatts ?? 2400);
@@ -272,10 +275,12 @@ export default function App() {
               processorId={processorId}
               onProcessorChange={setProcessorId}
               routingMode={routingMode}
+              cableEntry={cableEntry}
               dataPortSequences={dataPortSequences}
               powerChainSequences={powerChainSequences}
               powerMaxWatts={powerMaxWatts}
               onRoutingModeChange={setRoutingMode}
+              onCableEntryChange={setCableEntry}
               onDataPortSequencesChange={setDataPortSequences}
               onPowerChainSequencesChange={setPowerChainSequences}
               onPowerMaxWattsChange={setPowerMaxWatts}
