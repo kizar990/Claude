@@ -381,6 +381,7 @@ export default function App() {
               profileName={activeProfile.name}
               profileAccentColor={activeProfile.accentColor}
               terminology={activeProfile.terminology}
+              riggingSystem={activeProfile.riggingSystem}
             />
           </Suspense>
           <button
@@ -447,6 +448,7 @@ export default function App() {
               powerSizingMode={powerSizingMode}
               onPowerSizingModeChange={(m) => { setPowerSizingMode(m); markDirty(); }}
               activePanel={activePanel}
+              blankCells={blankCells}
               availableProcessors={availableProcessors}
             />
           )}

@@ -325,6 +325,8 @@ interface DocProps {
   profileName?: string;
   profileAccentColor?: string;
   terminology?: ProfileTerminology;
+  riggingSystem?: "modular" | "scaffolding" | "custom";
+  trussEvery?: number;
 }
 
 function TechDocument({
@@ -334,6 +336,7 @@ function TechDocument({
   panelOperatingPowerW, panelMaxPowerW,
   powerMaxWatts, powerSizingMode, cableEntry,
   profileAccentColor, terminology,
+  riggingSystem, trussEvery = 2,
 }: DocProps) {
   const { dimensions, materials, power, processor } = calc;
   const r = <T extends string | number>(key: string, auto: T): T =>
@@ -410,6 +413,22 @@ function TechDocument({
   const cableEntryLabel = cableEntry
     ? cableEntry.charAt(0).toUpperCase() + cableEntry.slice(1)
     : "—";
+
+  // ── Ground support (scaffolding / custom rigs) ────────────────────────────
+  const isScaffolding = riggingSystem && riggingSystem !== "modular";
+  const gsPositions: number[] = [0];
+  if (isScaffolding) {
+    const spacing = Math.max(1, trussEvery);
+    for (let c = spacing; c < columns; c += spacing) gsPositions.push(c);
+    if (gsPositions[gsPositions.length - 1] !== columns) gsPositions.push(columns);
+  }
+  const numRearTrusses = isScaffolding ? gsPositions.length : 0;
+  const numBaseTrusses = numRearTrusses;
+  const gsBridgeClamps = isScaffolding ? numRearTrusses * (rows + 1) : 0;
+  const gsSandbags     = isScaffolding ? numBaseTrusses * 2 : 0;
+  const totalWeightKg  = Math.round(activePanels * dimensions.panelWeightKg);
+  const structureLabel = tl("structureType", "Structure");
+  const supportLabel   = tl("panelSupport",  "Pickup Point");
 
   return (
     <Document>
@@ -537,6 +556,34 @@ function TechDocument({
             </View>
           </View>
         </View>
+
+        {/* Ground support hardware (scaffolding profiles only) */}
+        {isScaffolding && (
+          <View style={{ marginBottom: 8, borderWidth: 0.5, borderColor: profileAccentColor ?? "#999", borderRadius: 2, padding: "4 6" }}>
+            <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", marginBottom: 3 }}>
+              GROUND SUPPORT — {structureLabel.toUpperCase()}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 14, marginBottom: 2 }}>
+              <Text style={s.powerItem}>Rear trusses: <Text style={s.powerBold}>{numRearTrusses}</Text></Text>
+              <Text style={s.powerItem}>Base trusses: <Text style={s.powerBold}>{numBaseTrusses}</Text></Text>
+              <Text style={s.powerItem}>Bridge clamps: <Text style={s.powerBold}>{gsBridgeClamps}</Text></Text>
+              <Text style={s.powerItem}>Sandbags: <Text style={s.powerBold}>{gsSandbags}</Text></Text>
+              <Text style={s.powerItem}>Panel weight: <Text style={s.powerBold}>{totalWeightKg} kg</Text></Text>
+            </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {gsPositions.map((col, i) => {
+                const leftSpan  = i === 0 ? 0 : col - gsPositions[i - 1];
+                const rightSpan = i === gsPositions.length - 1 ? 0 : gsPositions[i + 1] - col;
+                const load = Math.ceil(((leftSpan + rightSpan) / 2) * rows * dimensions.panelWeightKg);
+                return (
+                  <Text key={i} style={{ fontSize: 6, color: "#555" }}>
+                    {supportLabel} #{i + 1}: {(col * dimensions.panelWidthMm / 1000).toFixed(2)}m — ~{load} kg
+                  </Text>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* Content spec */}
         <View style={s.contentBox}>
@@ -705,6 +752,7 @@ export function TechPdfDownloadButton({
   panelOperatingPowerW, panelMaxPowerW,
   powerMaxWatts, powerSizingMode, cableEntry,
   profileName, profileAccentColor, terminology,
+  riggingSystem, trussEvery,
 }: ButtonProps) {
   const slug = [meta.jobNumber, meta.name].filter(Boolean).join("-").replace(/\s+/g, "-") || "tech-sheet";
   const fileName = `tech-sheet-${slug}.pdf`;
@@ -731,6 +779,8 @@ export function TechPdfDownloadButton({
           profileName={profileName}
           profileAccentColor={profileAccentColor}
           terminology={terminology}
+          riggingSystem={riggingSystem}
+          trussEvery={trussEvery}
         />
       }
       fileName={fileName}
