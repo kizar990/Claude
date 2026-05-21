@@ -120,7 +120,7 @@ export const MTA_PROFILE: Profile = {
   name: "MTA International",
   accentColor: "#059669",
   riggingSystem: "scaffolding",
-  panels: MTA_PANELS,
+  panels: [...PRESET_PANELS, ...MTA_PANELS],
   processorStockIds: PROCESSORS.map((p) => p.id),
   defaultProcessorId: PROCESSORS[0].id,
   defaultPanelId: MTA_PANELS[0].id,

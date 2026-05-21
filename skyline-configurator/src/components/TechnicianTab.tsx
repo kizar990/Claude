@@ -67,6 +67,8 @@ export function TechnicianTab({
   const { overrides, resetAll } = overrideState;
   const anyOverride = Object.keys(overrides).length > 0;
 
+  const effectiveLedSpares = Math.round(Number(resolve("mat_ledSpares", materials.ledSpares, overrides)));
+
   const profile = useProfile();
   const T = profile.terminology;
 
@@ -214,11 +216,25 @@ export function TechnicianTab({
           <MatRow label={term(T, "powerstart10mLabel", "Powerstart 10m")} fieldKey="mat_powerstart10m" auto={materials.powerstart10m} overrideState={overrideState} note="cases × 1" indent />
           <MatRow label={term(T, "powerstart1mLabel", "Powerstart 1m")} fieldKey="mat_powerstart1m" auto={materials.powerstart1m} overrideState={overrideState} note="cases × 1" indent />
           <MatRow label={term(T, "datastartKitLabel", "Datastart KIT (20/10/5/3)")} fieldKey="mat_datastartKit" auto={materials.datastartKit} overrideState={overrideState} note="cases × 2" indent />
-          <MatRow label={term(T, "etapeLabel", "E-tape rolls")} fieldKey="mat_etapeRolls" auto={materials.etapeRolls} overrideState={overrideState} note="cases × 1" indent />
-          <MatRow label={term(T, "fitKitLabel", "FIT KIT (Quickfix + T-Bone)")} fieldKey="mat_fitKit" auto={materials.fitKit} overrideState={overrideState} note="cases × 10" indent />
-          <MatRow label={term(T, "neutrikCouplersLabel", "Neutrik Couplers")} fieldKey="mat_neutrikCouplers" auto={materials.neutrikCouplers} overrideState={overrideState} note="fixed" />
-          <MatRow label="PROC Flightcase" fieldKey="mat_procFlightcase" auto={materials.procFlightcase} overrideState={overrideState} note="1 per screen" />
+          {profile.riggingSystem !== "modular" && (
+            <MatRow label={term(T, "etapeLabel", "E-tape rolls")} fieldKey="mat_etapeRolls" auto={materials.etapeRolls} overrideState={overrideState} note="cases × 1" indent />
+          )}
+          {profile.riggingSystem !== "modular" && (
+            <MatRow label={term(T, "fitKitLabel", "FIT KIT (Quickfix + T-Bone)")} fieldKey="mat_fitKit" auto={materials.fitKit} overrideState={overrideState} note="cases × 10" indent />
+          )}
+          {profile.riggingSystem !== "modular" && (
+            <MatRow label={term(T, "neutrikCouplersLabel", "Neutrik Couplers")} fieldKey="mat_neutrikCouplers" auto={materials.neutrikCouplers} overrideState={overrideState} note="fixed" />
+          )}
+          {profile.riggingSystem !== "modular" && (
+            <MatRow label="PROC Flightcase" fieldKey="mat_procFlightcase" auto={materials.procFlightcase} overrideState={overrideState} note="1 per screen" />
+          )}
           <MatRow label="LED Spares" fieldKey="mat_ledSpares" auto={materials.ledSpares} overrideState={overrideState} note={`ceil(${dimensions.activePanels} × 10%)`} />
+          {profile.riggingSystem === "modular" && (
+            <MatRow label="Power link spares" fieldKey="mat_powerlinkSpares" auto={effectiveLedSpares} overrideState={overrideState} note="= LED spares" indent />
+          )}
+          {profile.riggingSystem === "modular" && (
+            <MatRow label="Data link spares" fieldKey="mat_datalinkSpares" auto={effectiveLedSpares} overrideState={overrideState} note="= LED spares" indent />
+          )}
           <MatRow
             label={`Processor (${processor.status === "insufficient" ? "upgrade needed" : processor.status === "tight" ? "tight fit" : "OK"})`}
             fieldKey="mat_processor"
@@ -227,6 +243,9 @@ export function TechnicianTab({
             accent={processor.status === "insufficient" ? "red" : processor.status === "tight" ? "amber" : undefined}
           />
           <MatRow label="POWER/HDMI/USB-A/UTP kit" fieldKey="mat_powerHdmiUsbUtp" auto={materials.powerHdmiUsbUtp} overrideState={overrideState} indent />
+          {profile.riggingSystem === "modular" && (
+            <MatRow label="Laptop" fieldKey="mat_laptop" auto={1} overrideState={overrideState} note="fixed" />
+          )}
           <MatRow label="Mediaplayer (HD)" fieldKey="mat_mediaplayer" auto={materials.mediaplayer} overrideState={overrideState} />
           <MatRow label="POWER/HDMI/USB stick kit" fieldKey="mat_powerHdmiUsbStick" auto={materials.powerHdmiUsbStick} overrideState={overrideState} indent />
         </div>
