@@ -280,17 +280,20 @@ export function CableRoutingGrid({
   }
 
   // ── Client coords → panel index ───────────────────────────────────────────
+  // Uses SVG's own coordinate transform so that scaling, preserveAspectRatio
+  // letterboxing/pillarboxing, and CSS transforms are all handled correctly.
   function clientToPanel(e: { clientX: number; clientY: number }): number | null {
     const svg = svgRef.current;
     if (!svg) return null;
-    const r = svg.getBoundingClientRect();
-    const vbW = GRID_W + CALLOUT_R;
-    const vbH = CALLOUT_TOP + gridH + CAPTION_H;
-    const vx = (e.clientX - r.left) / r.width * vbW;
-    const vy = (e.clientY - r.top) / r.height * vbH;
-    if (vx < 0 || vx >= GRID_W || vy < CALLOUT_TOP || vy >= CALLOUT_TOP + gridH) return null;
-    const col = Math.floor(vx / cellW);
-    const row = Math.floor((vy - CALLOUT_TOP) / cellH);
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const { x: vx, y: vy } = pt.matrixTransform(ctm.inverse());
+    if (vx < gx || vx >= gx + GRID_W || vy < gy || vy >= gy + gridH) return null;
+    const col = Math.floor((vx - gx) / cellW);
+    const row = Math.floor((vy - gy) / cellH);
     if (col < 0 || col >= columns || row < 0 || row >= rows) return null;
     return row * columns + col;
   }
