@@ -50,6 +50,7 @@ interface Props {
   onDataPortSequencesChange: (s: Record<string, number[]>) => void;
   onPowerChainSequencesChange: (s: Record<string, number[]>) => void;
   onPowerMaxWattsChange: (w: number) => void;
+  blankCells?: number[];
 }
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
@@ -132,6 +133,7 @@ export function CableRoutingGrid({
   onCableEntryChange,
   onDataPortSequencesChange,
   onPowerChainSequencesChange,
+  blankCells = [],
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -179,7 +181,7 @@ export function CableRoutingGrid({
     if (!pendingRegenRef.current) return;
     pendingRegenRef.current = false;
     const ppc = Math.max(1, Math.floor(powerMaxWatts / panelPowerW));
-    const order = buildPracticalOrder(cableEntry, columns, rows);
+    const order = buildPracticalOrder(cableEntry, columns, rows).filter(idx => !blankCells.includes(idx));
     const newSeqs = buildAutoChains(ppc, order);
     const count = Object.keys(newSeqs).length;
     setNumChains(Math.max(1, count));
@@ -295,7 +297,9 @@ export function CableRoutingGrid({
     const col = Math.floor((vx - gx) / cellW);
     const row = Math.floor((vy - gy) / cellH);
     if (col < 0 || col >= columns || row < 0 || row >= rows) return null;
-    return row * columns + col;
+    const idx = row * columns + col;
+    if (blankCells.includes(idx)) return null;
+    return idx;
   }
 
   // ── Undo / Redo ───────────────────────────────────────────────────────────
@@ -371,7 +375,7 @@ export function CableRoutingGrid({
   function runAutoChains() {
     pushUndo();
     const ppc = Math.max(1, Math.floor(powerMaxWatts / panelPowerW));
-    const order = buildPracticalOrder(cableEntry, columns, rows);
+    const order = buildPracticalOrder(cableEntry, columns, rows).filter(idx => !blankCells.includes(idx));
     const newSeqs = buildAutoChains(ppc, order);
     const count = Object.keys(newSeqs).length;
     setNumChains(Math.max(1, count));
@@ -527,7 +531,7 @@ export function CableRoutingGrid({
     setIsSelectDrag(false);
   }
 
-  // ── Data routing auto algorithms (unchanged) ──────────────────────────────
+  // ── Data routing auto algorithms ──────────────────────────────────────────
   function serpentineForEntry(entry: EntryEdge): number[] {
     const order: number[] = [];
     if (entry === "top") {
@@ -553,15 +557,15 @@ export function CableRoutingGrid({
         else for (let r = rows - 1; r >= 0; r--) order.push(r * columns + c);
       }
     }
-    return order;
+    return order.filter(idx => !blankCells.includes(idx));
   }
 
   function autoEvenSplit(): Record<string, number[]> {
-    const total = columns * rows;
+    const order = serpentineForEntry(cableEntry);
+    const total = order.length;
     const use = Math.min(numPorts, Math.max(Math.ceil(total / panelsPerPort), numPorts));
     const base = Math.floor(total / use);
     const extra = total % use;
-    const order = serpentineForEntry(cableEntry);
     const seqs: Record<string, number[]> = {};
     let idx = 0;
     for (let p = 1; p <= use; p++) {
@@ -581,8 +585,8 @@ export function CableRoutingGrid({
       const panels: number[] = [];
       portRows.forEach((r, idx) => {
         const ltr = cableEntry === "right" ? idx % 2 !== 0 : idx % 2 === 0;
-        if (ltr) for (let c = 0; c < columns; c++) panels.push(r * columns + c);
-        else for (let c = columns - 1; c >= 0; c--) panels.push(r * columns + c);
+        if (ltr) for (let c = 0; c < columns; c++) { const i = r * columns + c; if (!blankCells.includes(i)) panels.push(i); }
+        else for (let c = columns - 1; c >= 0; c--) { const i = r * columns + c; if (!blankCells.includes(i)) panels.push(i); }
       });
       return panels;
     }
@@ -615,8 +619,8 @@ export function CableRoutingGrid({
       const panels: number[] = [];
       portCols.forEach((col, idx) => {
         const goUp = cableEntry === "bottom" ? idx % 2 === 0 : idx % 2 !== 0;
-        if (goUp) for (let r = rows - 1; r >= 0; r--) panels.push(r * columns + col);
-        else for (let r = 0; r < rows; r++) panels.push(r * columns + col);
+        if (goUp) for (let r = rows - 1; r >= 0; r--) { const i = r * columns + col; if (!blankCells.includes(i)) panels.push(i); }
+        else for (let r = 0; r < rows; r++) { const i = r * columns + col; if (!blankCells.includes(i)) panels.push(i); }
       });
       return panels;
     }
@@ -974,6 +978,9 @@ export function CableRoutingGrid({
           <defs>
             {renderMarkers(dataPortSequences, PORT_COLORS, "port-arrow")}
             {renderMarkers(powerChainSequences, CHAIN_COLORS, "chain-arrow")}
+            <pattern id="blank-hatch" patternUnits="userSpaceOnUse" width={6} height={6} patternTransform="rotate(45)">
+              <line x1={0} y1={0} x2={0} y2={6} stroke="#94a3b8" strokeWidth={2} />
+            </pattern>
             <style>{`
               @keyframes panel-flash {
                 0%   { opacity: 0.8; }
@@ -987,6 +994,23 @@ export function CableRoutingGrid({
           {Array.from({ length: rows }, (_, r) =>
             Array.from({ length: columns }, (_, c) => {
               const idx = r * columns + c;
+              const isBlank = blankCells.includes(idx);
+              if (isBlank) {
+                return (
+                  <g key={idx} style={{ pointerEvents: "none" }}>
+                    <rect
+                      x={gx + c * cellW} y={gy + r * cellH}
+                      width={cellW} height={cellH}
+                      fill="#CBD5E1" stroke="#94A3B8" strokeWidth={0.75}
+                    />
+                    <rect
+                      x={gx + c * cellW} y={gy + r * cellH}
+                      width={cellW} height={cellH}
+                      fill="url(#blank-hatch)" opacity={0.5}
+                    />
+                  </g>
+                );
+              }
               let fill = "#EBF0F8";
               if (routingMode === "data") {
                 const ap = panelToPort[idx];
@@ -1104,7 +1128,7 @@ export function CableRoutingGrid({
 
           {/* ── Caption ───────────────────────────────────────────────── */}
           <text x={gx} y={gy + gridH + 30} fontSize={10} fontFamily="system-ui,sans-serif" fill={CAPTION_COLOR}>
-            {`${columns} × ${rows} panels  ·  ${panelWidthMm} × ${panelHeightMm} mm per panel  ·  ${pixelPitch}  ·  ${activePanels} panels total`}
+            {`${columns} × ${rows} grid  ·  ${panelWidthMm} × ${panelHeightMm} mm per panel  ·  ${pixelPitch}  ·  ${activePanels} active panel${activePanels !== 1 ? "s" : ""}${blankCells.length > 0 ? `  ·  ${blankCells.length} blank` : ""}`}
           </text>
         </svg>
 

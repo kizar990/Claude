@@ -127,7 +127,7 @@ export default function App() {
     : cfg.PANEL_OPERATING_POWER_W;
 
   const calc = useMemo(
-    () => calcAll({ ...input, blankPanels: input.blankPanels + blankCells.length }, cfg, processorId, effectivePanelPowerW),
+    () => calcAll({ ...input, blankPanels: blankCells.length }, cfg, processorId, effectivePanelPowerW),
     [input, blankCells, cfg, processorId, effectivePanelPowerW]
   );
 

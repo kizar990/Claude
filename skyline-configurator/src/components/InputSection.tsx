@@ -170,14 +170,6 @@ export function InputSection({
               className="w-16 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 text-center bg-white dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
-          <div className="flex items-center gap-2 ml-4">
-            <label className="text-sm text-gray-600 dark:text-gray-400">Blank panels</label>
-            <input
-              type="number" min={0} max={input.columns * input.rows} value={input.blankPanels}
-              onChange={(e) => onInputChange({ ...input, blankPanels: Math.max(0, parseInt(e.target.value) || 0) })}
-              className="w-16 text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 text-center bg-white dark:bg-gray-800 dark:text-gray-100"
-            />
-          </div>
         </div>
       )}
 

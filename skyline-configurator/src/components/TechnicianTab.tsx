@@ -200,6 +200,7 @@ export function TechnicianTab({
               onDataPortSequencesChange={onDataPortSequencesChange}
               onPowerChainSequencesChange={onPowerChainSequencesChange}
               onPowerMaxWattsChange={onPowerMaxWattsChange}
+              blankCells={blankCells}
             />
           </div>
         </section>
