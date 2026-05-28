@@ -3,7 +3,6 @@ import { ProfileContext } from "./ProfileContext";
 import { InputSection } from "./components/InputSection";
 import { DesignerTab } from "./components/DesignerTab";
 import { TechnicianTab } from "./components/TechnicianTab";
-import { LayoutTab } from "./components/LayoutTab";
 import { ProjectDropdown } from "./components/ProjectDropdown";
 import { ProfileSwitcher } from "./components/ProfileSwitcher";
 import { lazy, Suspense } from "react";
@@ -38,7 +37,7 @@ import {
   type Profile,
 } from "./profiles";
 
-type Tab = "designer" | "technician" | "render";
+type Tab = "designer" | "technician";
 
 const DEFAULT_INPUT: ScreenInputState = { columns: 4, rows: 3, blankPanels: 0 };
 
@@ -323,7 +322,7 @@ export default function App() {
 
           {/* Tabs */}
           <nav className="flex gap-1">
-            {(["designer", ...(techMode ? ["technician" as Tab] : []), "render"] as Tab[]).map(
+            {(["designer", ...(techMode ? ["technician" as Tab] : [])] as Tab[]).map(
               (t) => (
                 <button
                   key={t}
@@ -335,7 +334,7 @@ export default function App() {
                   }`}
                   style={tab === t ? { backgroundColor: activeProfile.accentColor } : undefined}
                 >
-                  {t === "designer" ? "Designer / PM" : t === "technician" ? "Technician" : "Layout"}
+                  {t === "designer" ? "Designer / PM" : "Technician"}
                 </button>
               )
             )}
@@ -426,6 +425,8 @@ export default function App() {
               processorId={processorId}
               powerSizingMode={powerSizingMode}
               onPowerSizingModeChange={(m) => { setPowerSizingMode(m); markDirty(); }}
+              blankCells={blankCells}
+              onBlankCellsChange={(c) => { setBlankCells(c); markDirty(); }}
             />
           )}
 
@@ -449,18 +450,8 @@ export default function App() {
               onPowerSizingModeChange={(m) => { setPowerSizingMode(m); markDirty(); }}
               activePanel={activePanel}
               blankCells={blankCells}
-              availableProcessors={availableProcessors}
-            />
-          )}
-
-          {tab === "render" && (
-            <LayoutTab
-              columns={input.columns}
-              rows={input.rows}
-              blankCells={blankCells}
-              chains={chains}
               onBlankCellsChange={(c) => { setBlankCells(c); markDirty(); }}
-              onChainsChange={(c) => { setChains(c); markDirty(); }}
+              availableProcessors={availableProcessors}
             />
           )}
         </main>

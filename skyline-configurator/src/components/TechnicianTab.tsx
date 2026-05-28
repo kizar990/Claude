@@ -38,6 +38,7 @@ interface Props {
   onPowerSizingModeChange: (m: "operating" | "max") => void;
   activePanel: PanelSpec;
   blankCells?: number[];
+  onBlankCellsChange?: (c: number[]) => void;
   /** Filtered processor list from the active profile (defaults to all if not provided) */
   availableProcessors?: import("../config").ProcessorModel[];
 }
@@ -61,6 +62,7 @@ export function TechnicianTab({
   onPowerSizingModeChange,
   activePanel,
   blankCells = [],
+  onBlankCellsChange = () => {},
   availableProcessors,
 }: Props) {
   const { dimensions, materials, power, processor } = calc;
@@ -201,6 +203,7 @@ export function TechnicianTab({
               onPowerChainSequencesChange={onPowerChainSequencesChange}
               onPowerMaxWattsChange={onPowerMaxWattsChange}
               blankCells={blankCells}
+              onBlankCellsChange={onBlankCellsChange}
             />
           </div>
         </section>
