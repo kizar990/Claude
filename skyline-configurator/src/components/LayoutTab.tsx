@@ -96,20 +96,66 @@ export function LayoutTab({
                   Screen Layout — {columns}×{rows}
                 </h3>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                  {activeCount} active{blankCount > 0 ? `, ${blankCount} blank` : ""}
+                  {activeCount} active panel{activeCount !== 1 ? "s" : ""}{blankCount > 0 ? `, ${blankCount} blank` : ""}
                   {" · "}{chains.length} chain{chains.length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <label className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showChains}
-                  onChange={(e) => setShowChains(e.target.checked)}
-                  className="rounded"
-                />
-                Show chains
-              </label>
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Mode toggle directly on grid header */}
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-400 dark:text-gray-500 mr-1">Edit:</span>
+                  <button
+                    onClick={() => setMode("blank")}
+                    title="Click panels to toggle them blank/active"
+                    className={`text-xs px-2.5 py-1 rounded font-medium transition-colors ${
+                      mode === "blank"
+                        ? "bg-slate-700 dark:bg-slate-500 text-white"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    ✂ Blank cells
+                  </button>
+                  <button
+                    onClick={() => { setMode("chain"); if (!activeChainId && chains.length > 0) setActiveChainId(chains[0].id); }}
+                    title="Click panels in order to build daisy chains"
+                    className={`text-xs px-2.5 py-1 rounded font-medium transition-colors ${
+                      mode === "chain"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    🔗 Chains
+                  </button>
+                </div>
+                <label className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showChains}
+                    onChange={(e) => setShowChains(e.target.checked)}
+                    className="rounded"
+                  />
+                  Show chains
+                </label>
+              </div>
             </div>
+            {/* Mode hint */}
+            {mode === "blank" && (
+              <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/40 border-b border-gray-100 dark:border-gray-800 text-xs text-slate-600 dark:text-slate-400">
+                Click any panel to toggle it <strong>blank</strong> (absent from the wall). Click again to restore it.
+                {blankCount > 0 && (
+                  <button onClick={() => onBlankCellsChange([])} className="ml-3 text-red-400 hover:text-red-600 underline">
+                    Clear all blanks
+                  </button>
+                )}
+              </div>
+            )}
+            {mode === "chain" && (
+              <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-gray-100 dark:border-gray-800 text-xs text-blue-700 dark:text-blue-400">
+                {activeChainId
+                  ? `Building chain ${(chains.findIndex(c => c.id === activeChainId) ?? -1) + 1} — click panels in order to daisy-chain them.`
+                  : "Select or create a chain on the right, then click panels in order."}
+              </div>
+            )}
             <div className="p-4">
               <ScreenRender
                 columns={columns}
@@ -124,23 +170,6 @@ export function LayoutTab({
             </div>
           </div>
 
-          {/* Legend */}
-          {blankCells.length > 0 && (
-            <div className="mt-2 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-slate-400" /> Blank
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded bg-slate-200 border border-slate-300" /> Active
-              </span>
-              <button
-                onClick={() => onBlankCellsChange([])}
-                className="text-red-400 hover:text-red-600 underline"
-              >
-                Clear all blanks
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Daisy chain panel */}
@@ -149,44 +178,6 @@ export function LayoutTab({
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm mb-3">
               Daisy Chain Planner
             </h3>
-
-            {/* Mode selector */}
-            <div className="flex gap-1 mb-3">
-              <button
-                onClick={() => setMode("blank")}
-                className={`flex-1 text-xs py-1.5 rounded font-medium transition-colors ${
-                  mode === "blank"
-                    ? "bg-gray-700 dark:bg-gray-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                }`}
-              >
-                Blank
-              </button>
-              <button
-                onClick={() => { setMode("chain"); if (!activeChainId && chains.length > 0) setActiveChainId(chains[0].id); }}
-                className={`flex-1 text-xs py-1.5 rounded font-medium transition-colors ${
-                  mode === "chain"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                }`}
-              >
-                Chain
-              </button>
-            </div>
-
-            {mode === "chain" && (
-              <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
-                {activeChainId
-                  ? `Building chain ${(chains.findIndex(c => c.id === activeChainId) ?? -1) + 1}. Click panels in order.`
-                  : "Select or create a chain, then click panels."}
-              </p>
-            )}
-
-            {mode === "blank" && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Click any panel to toggle it as blank (cut-out).
-              </p>
-            )}
 
             {/* Chain list */}
             <div className="space-y-1 mb-3">
