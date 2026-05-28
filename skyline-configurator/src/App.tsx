@@ -269,7 +269,7 @@ export default function App() {
       );
       setActivePanel(found ?? PRESET_PANELS[0]);
     }
-    setBlankCells(p.blankCells ?? []);
+    setBlankCells((p.blankCells ?? []).filter(i => i < p.input.columns * p.input.rows));
     setChains(p.chains ?? []);
     setProcessorId(p.processorId ?? PROCESSORS[0].id);
     setRoutingMode(p.routingMode ?? "layout");
@@ -411,7 +411,13 @@ export default function App() {
             meta={meta}
             activePanel={activePanel}
             onPanelChange={(p) => { setActivePanel(p); markDirty(); }}
-            onInputChange={(i) => { setInput(i); markDirty(); }}
+            onInputChange={(i) => {
+              if (i.columns !== input.columns || i.rows !== input.rows) {
+                setBlankCells([]);
+              }
+              setInput(i);
+              markDirty();
+            }}
             onMetaChange={(m) => { setMeta(m); markDirty(); }}
             darkMode={darkMode}
             onDarkToggle={() => setDarkMode((d) => !d)}
