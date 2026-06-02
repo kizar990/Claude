@@ -123,8 +123,8 @@ export function calcMaterials(activePanels: number, cfg: Config = CONFIG): Mater
   return {
     ledFlightcases: cases,
     ledPanels: activePanels,
-    powerlink1m: cases * cfg.POWERLINK_PER_CASE,
-    datalink1m: cases * cfg.DATALINK_PER_CASE,
+    powerlink1m: activePanels,
+    datalink1m: activePanels,
     powerstart10m: cases * cfg.POWERSTART_10M_PER_CASE,
     powerstart1m: cases * cfg.POWERSTART_1M_PER_CASE,
     datastartKit: cases * cfg.DATASTART_KIT_PER_CASE,

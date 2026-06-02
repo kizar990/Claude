@@ -215,8 +215,8 @@ export function TechnicianTab({
         <div className="divide-y divide-gray-100 dark:divide-gray-800">
           <MatRow label="LED Flightcases" fieldKey="mat_ledFlightcases" auto={materials.ledFlightcases} overrideState={overrideState} note={`ceil(${dimensions.activePanels} ÷ 10)`} />
           <MatRow label="LED Panels" fieldKey="mat_ledPanels" auto={materials.ledPanels} overrideState={overrideState} />
-          <MatRow label={term(T, "powerlinkLabel", "Powerlink 1m")} fieldKey="mat_powerlink1m" auto={materials.powerlink1m} overrideState={overrideState} note="cases × 10" indent />
-          <MatRow label={term(T, "datalinkLabel", "Datalink 1m")} fieldKey="mat_datalink1m" auto={materials.datalink1m} overrideState={overrideState} note="cases × 10" indent />
+          <MatRow label={term(T, "powerlinkLabel", "Powerlink 1m")} fieldKey="mat_powerlink1m" auto={materials.powerlink1m} overrideState={overrideState} note="1 per panel" indent />
+          <MatRow label={term(T, "datalinkLabel", "Datalink 1m")} fieldKey="mat_datalink1m" auto={materials.datalink1m} overrideState={overrideState} note="1 per panel" indent />
           <MatRow label={term(T, "powerstart10mLabel", "Powerstart 10m")} fieldKey="mat_powerstart10m" auto={materials.powerstart10m} overrideState={overrideState} note="cases × 1" indent />
           <MatRow label={term(T, "powerstart1mLabel", "Powerstart 1m")} fieldKey="mat_powerstart1m" auto={materials.powerstart1m} overrideState={overrideState} note="cases × 1" indent />
           <MatRow label={term(T, "datastartKitLabel", "Datastart KIT (20/10/5/3)")} fieldKey="mat_datastartKit" auto={materials.datastartKit} overrideState={overrideState} note="cases × 2" indent />
