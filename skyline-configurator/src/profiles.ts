@@ -4,6 +4,29 @@ import { PROCESSORS } from "./config";
 
 export type RiggingSystem = "modular" | "scaffolding" | "custom";
 
+export interface H2OutputCard {
+  id: string;
+  name: string;
+  ports: number;
+  pixelsPerPort: number;
+  quantity: number;
+}
+
+export interface H2InputCard {
+  id: string;
+  name: string;
+  inputType: string;
+  quantity: number;
+}
+
+export interface H2Config {
+  chassisSlots: number;
+  outputCards: H2OutputCard[];
+  inputCards: H2InputCard[];
+  maxOutputWidth?: number;
+  maxOutputHeight?: number;
+}
+
 export interface ProfileTerminology {
   // Core structural terms
   frameConnector: string;          // "Quick Fix" / "Bridge Clamp"
@@ -150,6 +173,28 @@ const BUILTIN_PROFILES: Profile[] = [SKYLINE_PROFILE, MTA_PROFILE];
 
 const CUSTOM_PROFILES_KEY = "led-calc-custom-profiles";
 const ACTIVE_PROFILE_KEY  = "led-calc-active-profile";
+const H2_CONFIGS_KEY      = "led-calc-h2-configs";
+
+export function loadH2Config(profileId: string): H2Config | null {
+  try {
+    const all = JSON.parse(localStorage.getItem(H2_CONFIGS_KEY) ?? "{}") as Record<string, H2Config>;
+    return all[profileId] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveH2Config(profileId: string, config: H2Config | null): void {
+  try {
+    const all = JSON.parse(localStorage.getItem(H2_CONFIGS_KEY) ?? "{}") as Record<string, H2Config>;
+    if (config === null) {
+      delete all[profileId];
+    } else {
+      all[profileId] = config;
+    }
+    localStorage.setItem(H2_CONFIGS_KEY, JSON.stringify(all));
+  } catch { /* ignore */ }
+}
 
 export function loadProfiles(): Profile[] {
   try {

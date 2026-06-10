@@ -1,4 +1,5 @@
 import { CONFIG, PROCESSORS, computePanelsPerPort, type Config } from "./config";
+import type { H2Config } from "./profiles";
 
 export interface ScreenInput {
   columns: number;
@@ -175,22 +176,77 @@ export function calcProcessorSufficiency(
   pixelsH: number,
   activePanels: number,
   processorId: string,
-  cfg: Config = CONFIG
+  cfg: Config = CONFIG,
+  h2Config?: H2Config | null
 ): ProcessorSpec {
   const model = PROCESSORS.find((p) => p.id === processorId) ?? PROCESSORS[0];
 
-  // A. Modular check
+  // A. Modular (H2) path
   if (model.isModular) {
+    if (!h2Config || h2Config.outputCards.length === 0) {
+      return {
+        modelName: "H2 (not configured)",
+        status: "modular",
+        count: 1,
+        needsUpgrade: false,
+        specsConfirmed: false,
+        warning: "H2 not configured — click Configure to enter card specifications.",
+        note: null,
+        panelLoad: 0,
+        panelCapacity: 0,
+      };
+    }
+
+    const totalPorts = h2Config.outputCards.reduce((s, c) => s + c.ports * c.quantity, 0);
+    const totalPixelCapacity = h2Config.outputCards.reduce((s, c) => s + c.ports * c.pixelsPerPort * c.quantity, 0);
+    const panelPixels = cfg.PANEL_PIXELS_W * cfg.PANEL_PIXELS_H;
+    const panelCapacity = panelPixels > 0 ? Math.floor(totalPixelCapacity / panelPixels) : 0;
+    const panelLoad = panelCapacity > 0 ? activePanels / panelCapacity : 0;
+    const totalPx = pixelsW * pixelsH;
+    const fmt = (n: number) => n.toLocaleString();
+
+    if (h2Config.maxOutputWidth && h2Config.maxOutputHeight) {
+      const maxW = h2Config.maxOutputWidth;
+      const maxH = h2Config.maxOutputHeight;
+      const fitsLandscape = pixelsW <= maxW && pixelsH <= maxH;
+      const fitsPortrait = pixelsW <= maxH && pixelsH <= maxW;
+      if (!fitsLandscape && !fitsPortrait) {
+        return {
+          modelName: "NovaStar H2", count: 1, status: "insufficient", needsUpgrade: true,
+          specsConfirmed: true, panelLoad, panelCapacity,
+          warning: `⚠ Exceeds H2 output dimension: wall ${Math.max(pixelsW, pixelsH).toLocaleString()} px, configured max ${Math.max(maxW, maxH).toLocaleString()} px`,
+          note: null,
+        };
+      }
+    }
+
+    if (activePanels > panelCapacity && panelCapacity > 0) {
+      return {
+        modelName: "NovaStar H2", count: 1, status: "insufficient", needsUpgrade: true,
+        specsConfirmed: true, panelLoad, panelCapacity,
+        warning: `⚠ Panel count exceeds H2 capacity: ${activePanels} panels, ${totalPorts} ports = ${panelCapacity} max`,
+        note: null,
+      };
+    }
+
+    if (totalPx > totalPixelCapacity) {
+      return {
+        modelName: "NovaStar H2", count: 1, status: "insufficient", needsUpgrade: true,
+        specsConfirmed: true, panelLoad, panelCapacity,
+        warning: `⚠ Exceeds H2 pixel capacity: ${fmt(totalPx)} / ${fmt(totalPixelCapacity)} px`,
+        note: null,
+      };
+    }
+
+    const dimNote = (!h2Config.maxOutputWidth || !h2Config.maxOutputHeight)
+      ? "Output dimensions not specified — verify against H2 documentation."
+      : null;
+
     return {
-      modelName: "H2 (Custom / Modular)",
-      status: "modular",
-      count: 1,
-      needsUpgrade: false,
-      specsConfirmed: false,
+      modelName: "NovaStar H2", count: 1, status: "ok", needsUpgrade: false,
+      specsConfirmed: true, panelLoad, panelCapacity,
       warning: null,
-      note: "H2 capacity depends on installed cards. Confirm with technical team.",
-      panelLoad: 0,
-      panelCapacity: 0,
+      note: dimNote,
     };
   }
 
@@ -298,13 +354,14 @@ export function calcAll(
   input: ScreenInput,
   cfg: Config = CONFIG,
   processorId?: string,
-  panelPowerOverride?: number
+  panelPowerOverride?: number,
+  h2Config?: H2Config | null
 ): FullConfig {
   const dimensions = calcDimensions(input, cfg);
   const materials = calcMaterials(dimensions.activePanels, cfg);
   const power = calcPower(dimensions.activePanels, cfg, panelPowerOverride);
   const processor = processorId
-    ? calcProcessorSufficiency(dimensions.pixelsW, dimensions.pixelsH, dimensions.activePanels, processorId, cfg)
+    ? calcProcessorSufficiency(dimensions.pixelsW, dimensions.pixelsH, dimensions.activePanels, processorId, cfg, h2Config)
     : calcProcessorFromDimensions(dimensions.pixelsW, dimensions.pixelsH, cfg);
 
   // Override processor count in materials if needed

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { RotateCcw, Plus, Trash2, Info } from "lucide-react";
+import { RotateCcw, Plus, Trash2, Info, Settings2 } from "lucide-react";
+import { H2ConfigModal } from "./H2ConfigModal";
+import type { H2Config } from "../profiles";
 import { EditableField } from "./EditableField";
 import { ProcessorBadge } from "./ProcessorBadge";
 import { ProcessorInfoModal } from "./ProcessorInfoModal";
@@ -41,6 +43,8 @@ interface Props {
   onBlankCellsChange?: (c: number[]) => void;
   /** Filtered processor list from the active profile (defaults to all if not provided) */
   availableProcessors?: import("../config").ProcessorModel[];
+  h2Config?: H2Config | null;
+  onH2ConfigSave?: (config: H2Config) => void;
 }
 
 export function TechnicianTab({
@@ -64,6 +68,8 @@ export function TechnicianTab({
   blankCells = [],
   onBlankCellsChange = () => {},
   availableProcessors,
+  h2Config,
+  onH2ConfigSave,
 }: Props) {
   const { dimensions, materials, power, processor } = calc;
   const { overrides, resetAll } = overrideState;
@@ -84,6 +90,8 @@ export function TechnicianTab({
 
   const [customLines, setCustomLines] = useState<CustomLine[]>([]);
   const [showModal, setShowModal] = useState<boolean>(false);
+  const [showH2Modal, setShowH2Modal] = useState(false);
+  const isH2 = processorId === "h2";
 
   function addCustomLine() {
     setCustomLines((prev) => [
@@ -169,7 +177,32 @@ export function TechnicianTab({
               <Info size={15} />
             </button>
           </div>
-          <ProcessorBadge processor={processor} />
+          {isH2 && processor.status === "modular" ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded px-2 py-1">
+                ⚙ H2 not configured
+              </span>
+              <button
+                onClick={() => setShowH2Modal(true)}
+                className="flex items-center gap-1 text-xs px-2.5 py-1 bg-blue-600 text-white rounded font-medium hover:bg-blue-700"
+              >
+                <Settings2 size={12} /> Configure H2 cards
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <ProcessorBadge processor={processor} />
+              {isH2 && (
+                <button
+                  onClick={() => setShowH2Modal(true)}
+                  className="flex items-center gap-1 text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                  title="Edit H2 card configuration"
+                >
+                  <Settings2 size={12} /> Edit H2
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -433,7 +466,25 @@ export function TechnicianTab({
         </p>
       </section>
 
-      {showModal && <ProcessorInfoModal processor={selectedProcessor} onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <ProcessorInfoModal
+          processor={selectedProcessor}
+          h2Config={isH2 ? h2Config : undefined}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+      {showH2Modal && (
+        <H2ConfigModal
+          initial={h2Config ?? null}
+          panelPixels={activePanel.pixelsW * activePanel.pixelsH}
+          panelLabel={`${activePanel.pixelPitch} mm`}
+          onSave={(cfg) => {
+            onH2ConfigSave?.(cfg);
+            setShowH2Modal(false);
+          }}
+          onClose={() => setShowH2Modal(false)}
+        />
+      )}
     </div>
   );
 }

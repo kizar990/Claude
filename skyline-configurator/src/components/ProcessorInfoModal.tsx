@@ -1,12 +1,14 @@
 import { useEffect, useRef } from "react";
 import type { ProcessorModel } from "../config";
+import type { H2Config } from "../profiles";
 
 interface Props {
   processor: ProcessorModel;
+  h2Config?: H2Config | null;
   onClose: () => void;
 }
 
-export function ProcessorInfoModal({ processor, onClose }: Props) {
+export function ProcessorInfoModal({ processor, h2Config, onClose }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -55,6 +57,61 @@ export function ProcessorInfoModal({ processor, onClose }: Props) {
         </div>
 
         <div className="px-6 py-4 space-y-5">
+          {/* H2 card configuration */}
+          {processor.isModular && (
+            <section>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400 mb-2">Card Configuration</h3>
+              {h2Config && h2Config.outputCards.length > 0 ? (
+                <div className="space-y-3">
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                    <dt className="text-gray-500 dark:text-gray-400">Chassis slots</dt>
+                    <dd className="text-gray-900 dark:text-gray-100 font-medium">{h2Config.chassisSlots}</dd>
+                    <dt className="text-gray-500 dark:text-gray-400">Total output ports</dt>
+                    <dd className="text-gray-900 dark:text-gray-100 font-medium">
+                      {h2Config.outputCards.reduce((s, c) => s + c.ports * c.quantity, 0)}
+                    </dd>
+                    <dt className="text-gray-500 dark:text-gray-400">Total pixel capacity</dt>
+                    <dd className="text-gray-900 dark:text-gray-100 font-medium">
+                      {h2Config.outputCards.reduce((s, c) => s + c.ports * c.pixelsPerPort * c.quantity, 0).toLocaleString()} px
+                    </dd>
+                    {(h2Config.maxOutputWidth && h2Config.maxOutputHeight) && (
+                      <>
+                        <dt className="text-gray-500 dark:text-gray-400">Max output</dt>
+                        <dd className="text-gray-900 dark:text-gray-100 font-medium">
+                          {h2Config.maxOutputWidth.toLocaleString()} × {h2Config.maxOutputHeight.toLocaleString()} px
+                        </dd>
+                      </>
+                    )}
+                  </dl>
+                  {h2Config.outputCards.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Output cards:</p>
+                      <ul className="text-sm space-y-0.5 text-gray-700 dark:text-gray-300">
+                        {h2Config.outputCards.map(c => (
+                          <li key={c.id}>× {c.quantity} {c.name || "Output card"} — {c.ports} ports × {c.pixelsPerPort.toLocaleString()} px</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {h2Config.inputCards.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Input cards:</p>
+                      <ul className="text-sm space-y-0.5 text-gray-700 dark:text-gray-300">
+                        {h2Config.inputCards.map(c => (
+                          <li key={c.id}>× {c.quantity} {c.name || "Input card"} ({c.inputType})</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  H2 is a modular processor — capacity depends on installed cards. Use the Configure button in the processor selector to enter card specifications.
+                </p>
+              )}
+            </section>
+          )}
+
           {/* Capacity */}
           {(processor.ethernetPorts != null ||
             processor.recommendedMaxPixels != null ||

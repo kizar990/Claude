@@ -8,6 +8,7 @@ import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
 import { PROCESSORS } from "../config";
+import type { H2Config } from "../profiles";
 interface Props {
   calc: FullConfig;
   overrideState: OverrideState;
@@ -16,9 +17,10 @@ interface Props {
   onPowerSizingModeChange: (m: "operating" | "max") => void;
   blankCells: number[];
   onBlankCellsChange: (c: number[]) => void;
+  h2Config?: H2Config | null;
 }
 
-export function DesignerTab({ calc, overrideState, processorId, powerSizingMode, onPowerSizingModeChange, blankCells, onBlankCellsChange }: Props) {
+export function DesignerTab({ calc, overrideState, processorId, powerSizingMode, onPowerSizingModeChange, blankCells, onBlankCellsChange, h2Config }: Props) {
   const { dimensions, power, processor, contentSpec } = calc;
   const { resetAll, overrides } = overrideState;
   const anyOverride = Object.keys(overrides).length > 0;
@@ -256,7 +258,13 @@ export function DesignerTab({ calc, overrideState, processorId, powerSizingMode,
         </div>
       )}
 
-      {showModal && <ProcessorInfoModal processor={selectedProcessor} onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <ProcessorInfoModal
+          processor={selectedProcessor}
+          h2Config={processorId === "h2" ? h2Config : undefined}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </div>
   );
 }

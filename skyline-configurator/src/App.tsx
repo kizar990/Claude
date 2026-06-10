@@ -34,7 +34,10 @@ import {
   getActiveProfileId,
   setActiveProfileId,
   profileAvailableProcessors,
+  loadH2Config,
+  saveH2Config,
   type Profile,
+  type H2Config,
 } from "./profiles";
 
 type Tab = "designer" | "technician";
@@ -66,6 +69,7 @@ export default function App() {
   // Profile system
   const [profiles, setProfiles] = useState<Profile[]>(() => loadProfiles());
   const [activeProfileId, setActiveProfileIdState] = useState<string>(() => getActiveProfileId());
+  const [h2Config, setH2ConfigState] = useState<H2Config | null>(() => loadH2Config(getActiveProfileId()));
   const activeProfile = useMemo(
     () => profiles.find((p) => p.id === activeProfileId) ?? profiles[0],
     [profiles, activeProfileId]
@@ -75,9 +79,15 @@ export default function App() {
     [activeProfile]
   );
 
+  function handleH2ConfigSave(config: H2Config) {
+    saveH2Config(activeProfileId, config);
+    setH2ConfigState(config);
+  }
+
   function handleSwitchProfile(id: string) {
     setActiveProfileId(id);
     setActiveProfileIdState(id);
+    setH2ConfigState(loadH2Config(id));
     const newProfile = profiles.find((p) => p.id === id);
     if (!newProfile) return;
     // Switch processor if the current one isn't in the new profile's stock
@@ -126,8 +136,8 @@ export default function App() {
     : cfg.PANEL_OPERATING_POWER_W;
 
   const calc = useMemo(
-    () => calcAll({ ...input, blankPanels: blankCells.length }, cfg, processorId, effectivePanelPowerW),
-    [input, blankCells, cfg, processorId, effectivePanelPowerW]
+    () => calcAll({ ...input, blankPanels: blankCells.length }, cfg, processorId, effectivePanelPowerW, h2Config),
+    [input, blankCells, cfg, processorId, effectivePanelPowerW, h2Config]
   );
 
   const selectedProcessor = useMemo(
@@ -433,6 +443,7 @@ export default function App() {
               onPowerSizingModeChange={(m) => { setPowerSizingMode(m); markDirty(); }}
               blankCells={blankCells}
               onBlankCellsChange={(c) => { setBlankCells(c); markDirty(); }}
+              h2Config={h2Config}
             />
           )}
 
@@ -458,6 +469,8 @@ export default function App() {
               blankCells={blankCells}
               onBlankCellsChange={(c) => { setBlankCells(c); markDirty(); }}
               availableProcessors={availableProcessors}
+              h2Config={h2Config}
+              onH2ConfigSave={handleH2ConfigSave}
             />
           )}
         </main>
