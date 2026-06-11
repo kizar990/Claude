@@ -175,6 +175,21 @@ const CUSTOM_PROFILES_KEY = "led-calc-custom-profiles";
 const ACTIVE_PROFILE_KEY  = "led-calc-active-profile";
 const H2_CONFIGS_KEY      = "led-calc-h2-configs";
 
+// ── localStorage availability ─────────────────────────────────────────────────
+
+export function isLocalStorageAvailable(): boolean {
+  try {
+    const key = "__ls_probe__";
+    localStorage.setItem(key, "1");
+    localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ── H2 config storage ─────────────────────────────────────────────────────────
+
 export function loadH2Config(profileId: string): H2Config | null {
   try {
     const all = JSON.parse(localStorage.getItem(H2_CONFIGS_KEY) ?? "{}") as Record<string, H2Config>;
@@ -327,4 +342,65 @@ export function blankProfile(): Profile {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+}
+
+// ── Export / Import ───────────────────────────────────────────────────────────
+
+export interface ProfileExport {
+  schemaVersion: 1;
+  exportedAt: string;
+  appName: "Skyline LED Wall Configurator";
+  profile: Profile;
+  h2Config: H2Config | null;
+}
+
+export type ImportParseResult =
+  | { ok: true; data: ProfileExport }
+  | { ok: false; error: string };
+
+export function exportProfileToFile(profile: Profile, h2Config: H2Config | null): void {
+  const payload: ProfileExport = {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    appName: "Skyline LED Wall Configurator",
+    profile,
+    h2Config,
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const date = new Date().toISOString().split("T")[0];
+  const safeName = profile.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  a.download = `${safeName}-profile-${date}.json`;
+  a.href = url;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function parseProfileImport(json: string): ImportParseResult {
+  try {
+    const raw = JSON.parse(json) as unknown;
+    if (typeof raw !== "object" || raw === null) {
+      return { ok: false, error: "File is not a valid JSON object." };
+    }
+    const d = raw as Record<string, unknown>;
+    if (d.schemaVersion !== 1) {
+      return { ok: false, error: `Unsupported schema version: ${String(d.schemaVersion ?? "missing")}. This file may be from a newer version of the app.` };
+    }
+    if (typeof d.appName !== "string" || !d.appName.includes("Skyline")) {
+      return { ok: false, error: "This file does not appear to be a Skyline LED Wall Configurator profile export." };
+    }
+    if (!d.profile || typeof d.profile !== "object") {
+      return { ok: false, error: "Missing or invalid 'profile' field in export file." };
+    }
+    const p = d.profile as Partial<Profile>;
+    if (!p.id || typeof p.id !== "string") return { ok: false, error: "Profile is missing an 'id' field." };
+    if (!p.name || typeof p.name !== "string") return { ok: false, error: "Profile is missing a 'name' field." };
+    if (!p.accentColor || typeof p.accentColor !== "string") return { ok: false, error: "Profile is missing 'accentColor'." };
+    if (!p.terminology || typeof p.terminology !== "object") return { ok: false, error: "Profile is missing 'terminology'." };
+    return { ok: true, data: d as unknown as ProfileExport };
+  } catch {
+    return { ok: false, error: "File is not valid JSON. It may be corrupted or the wrong file type." };
+  }
 }

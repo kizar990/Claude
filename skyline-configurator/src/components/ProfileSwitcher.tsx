@@ -1,14 +1,18 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, Plus, Copy, Trash2, Settings } from "lucide-react";
-import type { Profile } from "../profiles";
+import { ChevronDown, Plus, Copy, Trash2, Settings, Download, Upload } from "lucide-react";
+import type { Profile, H2Config } from "../profiles";
 import {
   SKYLINE_PROFILE,
   MTA_PROFILE,
   blankProfile,
   duplicateProfile,
   saveCustomProfile,
+  saveH2Config,
+  exportProfileToFile,
+  parseProfileImport,
   fileToDataUrl,
   extractDominantColor,
+  loadProfiles,
 } from "../profiles";
 import { ProfileEditorModal } from "./ProfileEditorModal";
 
@@ -17,6 +21,7 @@ interface Props {
   activeProfile: Profile;
   onSwitch: (id: string) => void;
   onProfilesChange: (profiles: Profile[]) => void;
+  h2Config?: H2Config | null;
 }
 
 type Template = "skyline" | "mta" | "blank" | "copy";
@@ -45,11 +50,14 @@ function ProfileAvatar({ profile, size = 20 }: { profile: Profile; size?: number
 
 export { ProfileAvatar };
 
-export function ProfileSwitcher({ profiles, activeProfile, onSwitch, onProfilesChange }: Props) {
+export function ProfileSwitcher({ profiles, activeProfile, onSwitch, onProfilesChange, h2Config }: Props) {
   const [open, setOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importPending, setImportPending] = useState<{ profile: Profile; h2Config: H2Config | null } | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,6 +70,55 @@ export function ProfileSwitcher({ profiles, activeProfile, onSwitch, onProfilesC
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
+
+  function handleExport() {
+    exportProfileToFile(activeProfile, h2Config ?? null);
+    setOpen(false);
+  }
+
+  function handleImportFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const json = e.target?.result as string;
+      const result = parseProfileImport(json);
+      if (!result.ok) {
+        setImportError(result.error);
+        return;
+      }
+      setImportPending({ profile: result.data.profile, h2Config: result.data.h2Config });
+    };
+    reader.readAsText(file);
+  }
+
+  function commitImport(mode: "replace" | "add") {
+    if (!importPending) return;
+    let targetProfile: Profile;
+    if (mode === "replace") {
+      targetProfile = {
+        ...importPending.profile,
+        id: activeProfile.id,
+        isBuiltIn: undefined,
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      targetProfile = {
+        ...importPending.profile,
+        id: crypto.randomUUID(),
+        isBuiltIn: undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    saveCustomProfile(targetProfile);
+    if (importPending.h2Config) {
+      saveH2Config(targetProfile.id, importPending.h2Config);
+    }
+    const updated = loadProfiles();
+    onProfilesChange(updated);
+    onSwitch(targetProfile.id);
+    setImportPending(null);
+    setOpen(false);
+  }
 
   function handleDelete(id: string) {
     if (!confirm("Delete this profile? This cannot be undone.")) return;
@@ -169,7 +226,6 @@ export function ProfileSwitcher({ profiles, activeProfile, onSwitch, onProfilesC
             <button
               onClick={() => {
                 if (activeProfile.isBuiltIn) {
-                  // Duplicate built-in first, then edit the copy
                   const dup = duplicateProfile(activeProfile.id);
                   if (dup) {
                     saveCustomProfile(dup);
@@ -191,6 +247,31 @@ export function ProfileSwitcher({ profiles, activeProfile, onSwitch, onProfilesC
               {activeProfile.isBuiltIn ? "Copy & edit current profile" : "Edit current profile"}
             </button>
           </div>
+          <div className="border-t border-gray-100 dark:border-gray-800 py-1">
+            <button
+              onClick={handleExport}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Download size={13} className="text-gray-400" /> Export profile
+            </button>
+            <button
+              onClick={() => { importInputRef.current?.click(); setOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Upload size={13} className="text-gray-400" /> Import profile
+            </button>
+          </div>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImportFile(file);
+              e.target.value = "";
+            }}
+          />
         </div>
       )}
 
@@ -214,8 +295,8 @@ export function ProfileSwitcher({ profiles, activeProfile, onSwitch, onProfilesC
           profile={editingProfile}
           onSave={(updated) => {
             saveCustomProfile(updated);
-            import("../profiles").then(({ loadProfiles }) => {
-              onProfilesChange(loadProfiles());
+            import("../profiles").then(({ loadProfiles: lp }) => {
+              onProfilesChange(lp());
               onSwitch(updated.id);
             });
             setShowEditor(false);
@@ -223,6 +304,62 @@ export function ProfileSwitcher({ profiles, activeProfile, onSwitch, onProfilesC
           }}
           onCancel={() => { setShowEditor(false); setEditingProfile(null); }}
         />
+      )}
+
+      {/* Import error */}
+      {importError && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-96 space-y-4">
+            <h3 className="font-semibold text-red-700 dark:text-red-400 text-base">Import failed</h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300">{importError}</p>
+            <div className="flex justify-end">
+              <button onClick={() => setImportError(null)}
+                className="px-4 py-1.5 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700">
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import action chooser */}
+      {importPending && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 w-[420px] space-y-4">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base">Import profile</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Found profile: <span className="font-medium text-gray-900 dark:text-gray-100">{importPending.profile.name}</span>
+              {importPending.h2Config && <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">(includes H2 config)</span>}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">How would you like to import it?</p>
+            <div className="space-y-2">
+              <button
+                onClick={() => commitImport("replace")}
+                className="w-full text-left px-4 py-3 rounded-lg border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+              >
+                <p className="font-medium text-sm text-blue-800 dark:text-blue-200">Replace current profile</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                  Overwrites "{activeProfile.name}" with the imported settings
+                </p>
+              </button>
+              <button
+                onClick={() => commitImport("add")}
+                className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <p className="font-medium text-sm text-gray-800 dark:text-gray-200">Add as new profile</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Creates a new profile, keeps "{activeProfile.name}" untouched
+                </p>
+              </button>
+            </div>
+            <div className="flex justify-end">
+              <button onClick={() => setImportPending(null)}
+                className="px-4 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

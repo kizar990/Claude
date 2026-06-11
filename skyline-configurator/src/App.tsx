@@ -36,6 +36,7 @@ import {
   profileAvailableProcessors,
   loadH2Config,
   saveH2Config,
+  isLocalStorageAvailable,
   type Profile,
   type H2Config,
 } from "./profiles";
@@ -45,6 +46,7 @@ type Tab = "designer" | "technician";
 const DEFAULT_INPUT: ScreenInputState = { columns: 4, rows: 3, blankPanels: 0 };
 
 export default function App() {
+  const [storageAvailable] = useState(() => isLocalStorageAvailable());
   const [darkMode, setDarkMode] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches
   );
@@ -326,6 +328,7 @@ export default function App() {
               activeProfile={activeProfile}
               onSwitch={handleSwitchProfile}
               onProfilesChange={handleProfilesChange}
+              h2Config={h2Config}
             />
           </div>
           <div className="flex-1" />
@@ -413,6 +416,13 @@ export default function App() {
           />
         </div>
       </header>
+
+      {!storageAvailable && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700 px-4 py-2 text-sm text-amber-800 dark:text-amber-300 text-center">
+          Settings cannot be saved in this browser session — configurations will be lost when you close the tab.
+          Consider exporting your profile as a backup file.
+        </div>
+      )}
 
       <div className="max-w-6xl mx-auto px-4 py-4">
         <main className="space-y-4">
