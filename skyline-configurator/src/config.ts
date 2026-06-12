@@ -108,6 +108,29 @@ export const PROCESSORS: ProcessorModel[] = [
     ]
   },
   {
+    "id": "mctrl4k", "name": "NovaStar MCTRL4K", "category": "controller",
+    "processorType": "4K LED display controller", "isModular": false,
+    "ethernetPorts": 16, "ethernetPortType": "1G RJ45",
+    "officialPerPortMaxPixels": 650000, "recommendedPerPortPixels": 600000,
+    "officialTheoreticalMaxPixels": 8800000, "recommendedMaxPixels": 8800000,
+    "devicePixelCap": 8800000, "maxInputPixels": null, "maxInputResolution": "3840×2160@60Hz",
+    "maxOutputWidth": 7680, "maxOutputHeight": 4320,
+    "opticalOutputs": 4, "videoInputs": ["DP 1.2", "HDMI 2.0", "Dual-Link DVI ×2"],
+    "supportsScaling": false, "supportsLayers": false, "maxLayers": 1,
+    "supportsGenlock": true, "supportsFiberMode": true,
+    "bestUse": "4K-class LED walls, high-resolution rental and fixed installs.",
+    "calculatorNotes": [
+      "Use 600,000 pixels per Ethernet port for recommended calculations.",
+      "Official per-port maximum is 650,000 pixels.",
+      "16 ports × 600,000 = 9,600,000 theoretical, but device pixel cap is 8,800,000.",
+      "Use 8,800,000 as the recommended and maximum calculator limit.",
+      "Maximum output width is 7,680 pixels.",
+      "Maximum output height is 4,320 pixels.",
+      "Supports HDR10 and 8/10/12-bit colour depth.",
+      "4 OPT outputs (2 main + 2 backup) for fiber transmission."
+    ]
+  },
+  {
     "id": "vx600", "name": "NovaStar VX600", "category": "all-in-one",
     "processorType": "All-in-one video processor and LED controller", "isModular": false,
     "ethernetPorts": 6, "ethernetPortType": "1G RJ45",
