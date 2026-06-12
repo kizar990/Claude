@@ -10,7 +10,7 @@ import { GroundSupportDiagram } from "./GroundSupportDiagram";
 import type { FullConfig } from "../calculations";
 import type { OverrideState } from "../useOverrides";
 import { resolve } from "../useOverrides";
-import { PROCESSORS, computePanelsPerPort } from "../config";
+import { PROCESSORS, computePanelsPerPort, CONFIG } from "../config";
 import type { PanelSpec } from "../panels";
 import { useProfile } from "../ProfileContext";
 import { term } from "../profiles";
@@ -113,6 +113,19 @@ export function TechnicianTab({
   const fmtInt = (v: number | string) => Math.round(Number(v)).toString();
   const fmtF1 = (v: number | string) => Number(v).toFixed(1);
   const fmtF3 = (v: number | string) => Number(v).toFixed(3);
+
+  // ── Data / power starts derived from routing ──────────────────────────────
+  const panelPowerW = powerSizingMode === "max" ? activePanel.maxPowerW : activePanel.operatingPowerW;
+  const effectivePanelsPerPort = panelsPerPort > 0 ? panelsPerPort : CONFIG.PANELS_PER_DATA_LINE;
+  const drawnDataChains = Object.values(dataPortSequences).filter(s => s.length > 0).length;
+  const drawnPowerChains = Object.values(powerChainSequences).filter(s => s.length > 0).length;
+  const panelsPerChain = Math.max(1, Math.floor(powerMaxWatts / panelPowerW));
+  const dataStartsQty = drawnDataChains > 0
+    ? drawnDataChains
+    : Math.max(1, Math.ceil(dimensions.activePanels / effectivePanelsPerPort));
+  const powerStartsQty = drawnPowerChains > 0
+    ? drawnPowerChains
+    : Math.max(1, Math.ceil(dimensions.activePanels / panelsPerChain));
 
   return (
     <div className="space-y-4">
@@ -250,9 +263,8 @@ export function TechnicianTab({
           <MatRow label="LED Panels" fieldKey="mat_ledPanels" auto={materials.ledPanels} overrideState={overrideState} />
           <MatRow label={term(T, "powerlinkLabel", "Powerlink 1m")} fieldKey="mat_powerlink1m" auto={materials.powerlink1m} overrideState={overrideState} note="1 per panel" indent />
           <MatRow label={term(T, "datalinkLabel", "Datalink 1m")} fieldKey="mat_datalink1m" auto={materials.datalink1m} overrideState={overrideState} note="1 per panel" indent />
-          <MatRow label={term(T, "powerstart10mLabel", "Powerstart 10m")} fieldKey="mat_powerstart10m" auto={materials.powerstart10m} overrideState={overrideState} note="cases × 1" indent />
-          <MatRow label={term(T, "powerstart1mLabel", "Powerstart 1m")} fieldKey="mat_powerstart1m" auto={materials.powerstart1m} overrideState={overrideState} note="cases × 1" indent />
-          <MatRow label={term(T, "datastartKitLabel", "Datastart KIT (20/10/5/3)")} fieldKey="mat_datastartKit" auto={materials.datastartKit} overrideState={overrideState} note="cases × 2" indent />
+          <MatRow label="Data starts" fieldKey="mat_dataStarts" auto={dataStartsQty} overrideState={overrideState} note={drawnDataChains > 0 ? `${drawnDataChains} drawn` : "estimated"} indent />
+          <MatRow label="Power starts" fieldKey="mat_powerStarts" auto={powerStartsQty} overrideState={overrideState} note={drawnPowerChains > 0 ? `${drawnPowerChains} drawn` : "estimated"} indent />
           {profile.riggingSystem !== "modular" && (
             <MatRow label={term(T, "etapeLabel", "E-tape rolls")} fieldKey="mat_etapeRolls" auto={materials.etapeRolls} overrideState={overrideState} note="cases × 1" indent />
           )}

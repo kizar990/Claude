@@ -359,9 +359,10 @@ function TechDocument({
     ? Object.values(dataPortSequences).filter((c) => c.length > 0)
     : [];
   const hasDrawnData = populatedDataChains.length > 0;
+  const effectivePanelsPerPort = (panelsPerPort != null && panelsPerPort > 0) ? panelsPerPort : 13;
   const dataStarts = hasDrawnData
     ? populatedDataChains.length
-    : Math.ceil(activePanels / Math.max(1, panelsPerPort ?? 1));
+    : Math.max(1, Math.ceil(activePanels / effectivePanelsPerPort));
   const dataLinks = hasDrawnData
     ? populatedDataChains.reduce((sum, c) => sum + Math.max(0, c.length - 1), 0)
     : Math.max(0, activePanels - dataStarts);
@@ -389,9 +390,8 @@ function TechDocument({
     ["LED Panels",                                    String(r("mat_ledPanels",       materials.ledPanels))],
     [tl("powerlinkLabel",    "Powerlink 1m"),         String(r("mat_powerlink1m",     materials.powerlink1m))],
     [tl("datalinkLabel",     "Datalink 1m"),          String(r("mat_datalink1m",      materials.datalink1m))],
-    [tl("powerstart10mLabel","Powerstart 10m"),       String(r("mat_powerstart10m",   materials.powerstart10m))],
-    [tl("powerstart1mLabel", "Powerstart 1m"),        String(r("mat_powerstart1m",    materials.powerstart1m))],
-    [tl("datastartKitLabel", "Datastart KIT"),        String(r("mat_datastartKit",    materials.datastartKit))],
+    ["Data starts",                                    String(dataStarts)],
+    ["Power starts",                                   String(powerStarts)],
     [tl("etapeLabel",        "E-tape rolls"),         String(r("mat_etapeRolls",      materials.etapeRolls))],
     [tl("fitKitLabel",       "FIT KIT"),              String(r("mat_fitKit",          materials.fitKit))],
     [tl("neutrikCouplersLabel","Neutrik Couplers"),   String(r("mat_neutrikCouplers", materials.neutrikCouplers))],

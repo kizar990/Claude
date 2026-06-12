@@ -420,7 +420,7 @@ export function CableRoutingGrid({
     const existingPort = panelToPort[panelIdx];
     if (existingPort === activePort) return;
     const currentSeq = dataPortSequences[portKey] ?? [];
-    if (currentSeq.length >= panelsPerPort) {
+    if (panelsPerPort > 0 && currentSeq.length >= panelsPerPort) {
       setPortFullWarning(activePort);
       if (e) setPortFullPos({ x: e.clientX, y: e.clientY });
       setTimeout(() => setPortFullWarning(null), 1200);
@@ -1215,7 +1215,9 @@ export function CableRoutingGrid({
           >
             {routingMode === "power"
               ? `Chain ${portFullWarning} full (${Math.max(1, Math.floor(powerMaxWatts / panelPowerW))} panels max)`
-              : `Port ${portFullWarning} full (${panelsPerPort} panels max)`}
+              : panelsPerPort > 0
+                ? `Port ${portFullWarning} full (${panelsPerPort} panels max)`
+                : `Port ${portFullWarning} full`}
           </div>
         )}
       </div>
