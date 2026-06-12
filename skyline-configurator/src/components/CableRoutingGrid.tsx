@@ -298,17 +298,28 @@ export function CableRoutingGrid({
   }
 
   // ── Client coords → panel index ───────────────────────────────────────────
-  // Uses SVG's own coordinate transform so that scaling, preserveAspectRatio
-  // letterboxing/pillarboxing, and CSS transforms are all handled correctly.
+  // Uses getBoundingClientRect() on the SVG element combined with explicit
+  // xMidYMid-meet geometry derived from the known viewBox dimensions.
+  // This avoids relying on getScreenCTM() whose behaviour for the root <svg>
+  // element is inconsistent across browsers when maxHeight CSS constrains the
+  // rendered height and preserveAspectRatio letterboxing is in play.
   function clientToPanel(e: { clientX: number; clientY: number }, allowBlanks = false): number | null {
     const svg = svgRef.current;
     if (!svg) return null;
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return null;
-    const pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    const { x: vx, y: vy } = pt.matrixTransform(ctm.inverse());
+    const r = svg.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return null;
+
+    // SVG default: preserveAspectRatio="xMidYMid meet"
+    // scale = largest uniform factor that fits the viewBox inside the rendered box
+    const scale = Math.min(r.width / totalW, r.height / totalH);
+    // Pillarbox / letterbox offsets (centred)
+    const ox = (r.width  - totalW * scale) / 2;
+    const oy = (r.height - totalH * scale) / 2;
+
+    // Screen → SVG user coordinates
+    const vx = (e.clientX - r.left - ox) / scale;
+    const vy = (e.clientY - r.top  - oy) / scale;
+
     if (vx < gx || vx >= gx + GRID_W || vy < gy || vy >= gy + gridH) return null;
     const col = Math.floor((vx - gx) / cellW);
     const row = Math.floor((vy - gy) / cellH);
