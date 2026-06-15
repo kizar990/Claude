@@ -82,8 +82,23 @@ export function TechnicianTab({
 
   const processorList = availableProcessors ?? PROCESSORS;
   const selectedProcessor = processorList.find((p) => p.id === processorId) ?? processorList[0];
+
+  // For modular processors (H2), derive port count and per-port pixel budget from
+  // the configured output cards rather than from the processor spec (which is null).
+  const h2Cards = (selectedProcessor.isModular && h2Config && h2Config.outputCards.length > 0)
+    ? h2Config.outputCards
+    : null;
+
+  const effectiveNumPorts: number = selectedProcessor.ethernetPorts !== null
+    ? selectedProcessor.ethernetPorts
+    : (h2Cards ? h2Cards.reduce((n, c) => n + c.ports * c.quantity, 0) : 0);
+
+  const effectivePerPortPixels: number = selectedProcessor.recommendedPerPortPixels !== null
+    ? selectedProcessor.recommendedPerPortPixels
+    : (h2Cards ? Math.min(...h2Cards.map(c => c.pixelsPerPort)) : 0);
+
   const panelsPerPort = computePanelsPerPort(
-    selectedProcessor.recommendedPerPortPixels ?? 0,
+    effectivePerPortPixels,
     dimensions.panelPixelsW,
     dimensions.panelPixelsH
   );
@@ -233,7 +248,7 @@ export function TechnicianTab({
               panelHeightMm={dimensions.panelHeightMm}
               pixelPitch={dimensions.pixelPitch}
               activePanels={dimensions.activePanels}
-              numPorts={selectedProcessor.ethernetPorts ?? 0}
+              numPorts={effectiveNumPorts}
               panelsPerPort={panelsPerPort}
               panelPowerW={powerSizingMode === "max" ? activePanel.maxPowerW : activePanel.operatingPowerW}
               powerSizingMode={powerSizingMode}
